@@ -1367,6 +1367,21 @@ function switchScreen(id){
   }
 }
 
+/* ---------------- expose functions used by inline onclick= handlers ---------------- */
+/* (ES modules don't leak top-level declarations to window like classic scripts did) */
+window.selectTeam = selectTeam;
+window.selectMode = selectMode;
+window.goToDraft = goToDraft;
+window.rerollCandidates = rerollCandidates;
+window.goToMatch = goToMatch;
+window.startMatch = startMatch;
+window.nextMatch = nextMatch;
+window.restart = restart;
+window.confirmBackToCover = confirmBackToCover;
+window.closeModal = closeModal;
+window.saveShareImage = saveShareImage;
+window.previewEnd = previewEnd;
+
 loadGameConfig();
 </script>
 </body>
