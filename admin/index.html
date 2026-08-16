@@ -33,10 +33,11 @@
   h2{ font-family:'Oswald',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:2px; color: var(--muted); font-weight:600; margin:0 0 14px; }
 
   label{ font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--muted); display:block; margin-bottom:4px; }
-  input, select{
+  input, select, textarea{
     width:100%; padding: 9px 10px; border:1px solid var(--line); border-radius: var(--radius-sm);
     font-family:'Oswald', sans-serif; font-size:14px; background: var(--panel); color: var(--text);
   }
+  textarea{ font-family:'IBM Plex Mono', monospace; font-size:12px; resize:vertical; }
   input[type=color]{ padding: 3px; height: 38px; }
   .field{ margin-bottom: 12px; }
   .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -51,6 +52,8 @@
   .btn.small{ padding: 5px 10px; font-size: 11px; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
   .btn.block{ width:100%; }
+  .btn-row-2{ display:flex; gap:8px; margin-top:10px; }
+  .btn-row-2 .btn{ flex:1; }
 
   .config-note{ font-size:12px; color: var(--muted); line-height:1.6; margin-bottom:16px; }
   .config-note code{ background: var(--panel-2); padding:1px 5px; border-radius:2px; }
@@ -77,16 +80,24 @@
   .breadcrumb a:hover{ text-decoration:underline; }
 
   .lineup-card{
-    display:flex; align-items:center; gap:12px; padding: 12px 14px;
-    border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom:8px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom:8px;
   }
   .lineup-card:hover{ border-color: var(--pitch); }
-  .lineup-card-name{ font-weight:600; font-size:14px; flex:1; }
+  .lineup-card.inactive{ opacity:.55; }
+  .lineup-card-name{ font-weight:600; font-size:14px; flex:1; cursor:pointer; }
   .lineup-card-meta{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
   .source-tag{
     font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px;
     padding: 2px 7px; border-radius:20px; background: var(--panel-2); color: var(--muted);
   }
+  .source-tag.inactive-tag{ background: var(--danger-soft); color: var(--danger); }
+  .lineup-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .icon-btn{
+    background:none; border:1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 4px 7px; cursor:pointer; font-size:12px; color: var(--muted);
+  }
+  .icon-btn:hover{ color: var(--text); border-color: var(--muted); }
 
   table{ width:100%; border-collapse: collapse; font-size: 13px; }
   th{
@@ -292,8 +303,55 @@
   </div>
 </dialog>
 
+<!-- PASTE LIST DIALOG -->
+<dialog id="pasteDialog">
+  <div class="dialog-body">
+    <h2>Colar lista de jogadores</h2>
+    <p class="config-note">
+      Copia a tabela <b>"Escalação"</b> do <a href="https://www.grenal.net.br" target="_blank">grenal.net.br</a> (ou qualquer lista no formato "Nome - Posição", uma por linha) e cola abaixo.
+      Se a coluna de clube vier junto na cópia, eu filtro automaticamente só o time selecionado.
+    </p>
+    <div class="field">
+      <textarea id="pasteText" rows="8" placeholder="Cole aqui..."></textarea>
+    </div>
+    <button class="btn small" onclick="processPaste()">Processar</button>
+    <div id="pastePreview" style="margin-top:14px;"></div>
+    <div class="dialog-actions">
+      <button class="btn" onclick="pasteDialog.close()">Cancelar</button>
+      <button class="btn primary" id="btnConfirmPaste" style="display:none;" onclick="confirmPasteImport()">Adicionar jogadores</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- IMPORT SPREADSHEET DIALOG -->
+<dialog id="importDialog">
+  <div class="dialog-body">
+    <h2>Importar planilha</h2>
+    <p class="config-note">
+      Colunas esperadas: <b>Nome do Time</b>, <b>Nome do Jogador</b>, <b>Posição</b>, <b>Nível</b>.
+      Times que ainda não existem são criados automaticamente. Cada time encontrado na planilha ganha
+      <b>uma escalação nova</b> com o nome que você definir abaixo.
+    </p>
+    <div class="field">
+      <label>Nome da escalação (aplicado a todos os times da planilha)</label>
+      <input type="text" id="importLineupName" placeholder='Ex: "Libertadores de 2017"'>
+    </div>
+    <div class="field">
+      <label>Arquivo (.xlsx ou .csv)</label>
+      <input type="file" id="importFile" accept=".xlsx,.csv">
+    </div>
+    <button class="btn small" onclick="processImportFile()">Processar</button>
+    <div id="importPreview" style="margin-top:14px;"></div>
+    <div class="dialog-actions">
+      <button class="btn" onclick="importDialog.close()">Cancelar</button>
+      <button class="btn primary" id="btnConfirmImport" style="display:none;" onclick="confirmImport()">Importar</button>
+    </div>
+  </div>
+</dialog>
+
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm';
 
 let supabase = null;
 let teams = [];
@@ -470,10 +528,16 @@ function renderLineupsPanel(){
     lineups.forEach(l=>{
       const count = l.players?.[0]?.count ?? 0;
       cards += `
-        <div class="lineup-card" onclick="openLineup('${l.id}')">
-          <div class="lineup-card-name">${l.name}</div>
-          <span class="source-tag">${l.source === 'api' ? 'via API' : 'manual'}</span>
+        <div class="lineup-card ${l.active ? '' : 'inactive'}">
+          <div class="lineup-card-name" onclick="openLineup('${l.id}')">${l.name}</div>
+          <span class="source-tag">${l.source === 'api' ? 'via API' : (l.source === 'import' ? 'planilha' : 'manual')}</span>
+          ${l.active ? '' : '<span class="source-tag inactive-tag">inativo</span>'}
           <span class="lineup-card-meta">${count} jogador${count===1?'':'es'}</span>
+          <div class="lineup-actions">
+            <button class="icon-btn" title="Renomear" onclick="renameLineup('${l.id}')">✏️</button>
+            <button class="icon-btn" title="${l.active ? 'Desativar' : 'Ativar'}" onclick="toggleLineupActive('${l.id}', ${l.active})">${l.active ? '⏸️' : '▶️'}</button>
+            <button class="icon-btn" title="Excluir" onclick="deleteLineup('${l.id}')">🗑️</button>
+          </div>
         </div>`;
     });
   }
@@ -481,8 +545,41 @@ function renderLineupsPanel(){
   panel.innerHTML = `
     <h2>Escalações — ${team.name}</h2>
     <div id="lineupsList">${cards}</div>
-    <button class="btn primary block" style="margin-top:10px;" onclick="openLineupDialog()">+ Nova escalação</button>
+    <div class="btn-row-2">
+      <button class="btn primary" onclick="openLineupDialog()">+ Nova escalação</button>
+      <button class="btn" onclick="openImportDialog()">📄 Importar planilha</button>
+    </div>
   `;
+}
+
+window.renameLineup = async function(id){
+  const l = lineups.find(x=>x.id===id);
+  if(!l) return;
+  const newName = prompt('Novo nome da escalação:', l.name);
+  if(newName === null) return;
+  const trimmed = newName.trim();
+  if(!trimmed){ showToast('O nome não pode ficar vazio.'); return; }
+  const { error } = await supabase.from('lineups').update({ name: trimmed }).eq('id', id);
+  if(error){ showToast('Erro ao renomear'); return; }
+  showToast('Escalação renomeada!');
+  await loadLineups(activeTeamId);
+}
+
+window.toggleLineupActive = async function(id, currentlyActive){
+  const { error } = await supabase.from('lineups').update({ active: !currentlyActive }).eq('id', id);
+  if(error){ showToast('Erro ao atualizar'); return; }
+  showToast(currentlyActive ? 'Escalação desativada.' : 'Escalação ativada.');
+  await loadLineups(activeTeamId);
+}
+
+window.deleteLineup = async function(id){
+  const l = lineups.find(x=>x.id===id);
+  if(!confirm(`Excluir a escalação "${l.name}"? Isso apaga todos os jogadores dela também.`)) return;
+  const { error } = await supabase.from('lineups').delete().eq('id', id);
+  if(error){ showToast('Erro ao excluir'); return; }
+  showToast('Escalação excluída.');
+  if(activeLineupId === id) activeLineupId = null;
+  await loadLineups(activeTeamId);
 }
 
 window.openLineupDialog = function(){
@@ -596,6 +693,230 @@ async function pullApiSquad(apiTeam){
   }
 }
 
+/* ---------------- SHARED HELPERS: position mapping & club matching ---------------- */
+function normalize(s){
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function mapPtPosition(str){
+  const s = normalize(str);
+  if(['gk','df','mf','fw'].includes(s)) return s.toUpperCase();
+  if(s.includes('goleiro')) return 'GK';
+  if(s.includes('zagueiro') || s.includes('lateral')) return 'DF';
+  if(s.includes('volante') || s.includes('meio') || s.includes('meia')) return 'MF';
+  if(s.includes('atacante') || s.includes('ponta') || s.includes('centroavante')) return 'FW';
+  return 'MF';
+}
+
+function clubMatches(club, teamName){
+  const c = normalize(club);
+  const t = normalize(teamName);
+  if(!c || !t) return true;
+  if(c.includes(t) || t.includes(c)) return true;
+  if(t === 'inter' && c.includes('internacional')) return true;
+  return false;
+}
+
+/* ---------------- PASTE LIST (e.g. from grenal.net.br) ---------------- */
+let pasteRows = [];
+
+function parsePastedLineup(text, teamNameHint){
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const out = [];
+  for(const line of lines){
+    let name, posRaw, club;
+    if(line.includes('\t')){
+      const cols = line.split('\t').map(s => s.trim()).filter(Boolean);
+      if(cols.length >= 5){ name = cols[2]; posRaw = cols[3]; club = cols[4]; }
+      else if(cols.length === 4){ name = cols[0]; posRaw = cols[1]; club = cols[2]; }
+      else if(cols.length >= 2){ name = cols[0]; posRaw = cols[1]; }
+    } else {
+      const parts = line.split(/\s+-\s+|,|\|/).map(s => s.trim()).filter(Boolean);
+      if(parts.length >= 2){ name = parts[0]; posRaw = parts[1]; }
+      else { name = line; posRaw = ''; }
+    }
+    if(!name) continue;
+    if(/^(sequencial|c[oó]digo|jogador|posi[cç][aã]o|clube)$/i.test(name)) continue;
+    if(club && teamNameHint && !clubMatches(club, teamNameHint)) continue;
+    out.push({ name, position: mapPtPosition(posRaw) });
+  }
+  return out;
+}
+
+window.openPasteDialog = function(){
+  if(!activeLineupId){ showToast('Selecione uma escalação primeiro.'); return; }
+  document.getElementById('pasteText').value = '';
+  document.getElementById('pastePreview').innerHTML = '';
+  document.getElementById('btnConfirmPaste').style.display = 'none';
+  pasteRows = [];
+  pasteDialog.showModal();
+}
+
+window.processPaste = function(){
+  const text = document.getElementById('pasteText').value;
+  const teamName = teams.find(t => t.id === activeTeamId)?.name || '';
+  pasteRows = parsePastedLineup(text, teamName);
+  renderPastePreview();
+}
+
+function renderPastePreview(){
+  const el = document.getElementById('pastePreview');
+  if(!pasteRows.length){
+    el.innerHTML = '<div class="empty">Nada reconhecido. Confere o formato do texto colado.</div>';
+    document.getElementById('btnConfirmPaste').style.display = 'none';
+    return;
+  }
+  const rows = pasteRows.map((r, i) => `
+    <tr>
+      <td><input type="text" value="${r.name}" oninput="pasteRows[${i}].name=this.value"></td>
+      <td>
+        <select onchange="pasteRows[${i}].position=this.value">
+          ${['GK','DF','MF','FW'].map(p => `<option value="${p}" ${p===r.position?'selected':''}>${POS_LABEL[p]}</option>`).join('')}
+        </select>
+      </td>
+      <td><button class="icon-btn" onclick="pasteRows.splice(${i},1); renderPastePreview();">✕</button></td>
+    </tr>`).join('');
+  el.innerHTML = `<table><thead><tr><th>Nome</th><th>Posição</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById('btnConfirmPaste').style.display = 'inline-block';
+  document.getElementById('btnConfirmPaste').textContent = `Adicionar ${pasteRows.length} jogadores`;
+}
+
+window.confirmPasteImport = async function(){
+  if(!pasteRows.length) return;
+  const rows = pasteRows.map(r => ({ lineup_id: activeLineupId, name: r.name, position: r.position, rating: 70 }));
+  const { error } = await supabase.from('players').insert(rows);
+  if(error){ showToast('Erro ao importar'); return; }
+  document.getElementById('pasteDialog').close();
+  showToast(`${rows.length} jogadores adicionados!`);
+  await loadPlayers(activeLineupId);
+  await loadLineups(activeTeamId);
+}
+
+/* ---------------- SPREADSHEET IMPORT (multi-team) ---------------- */
+let importGroups = [];
+
+window.openImportDialog = function(){
+  document.getElementById('importLineupName').value = '';
+  document.getElementById('importFile').value = '';
+  document.getElementById('importPreview').innerHTML = '';
+  document.getElementById('btnConfirmImport').style.display = 'none';
+  importGroups = [];
+  importDialog.showModal();
+}
+
+function findHeaderIndex(headerRow, candidates){
+  const norm = headerRow.map(h => normalize(h));
+  for(const cand of candidates){
+    const idx = norm.findIndex(h => h.includes(cand));
+    if(idx !== -1) return idx;
+  }
+  return -1;
+}
+
+window.processImportFile = function(){
+  const fileInput = document.getElementById('importFile');
+  const file = fileInput.files[0];
+  if(!file){ showToast('Escolhe um arquivo primeiro.'); return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      if(!rows.length){ showToast('Planilha vazia.'); return; }
+
+      const header = rows[0];
+      const iTeam = findHeaderIndex(header, ['time']);
+      const iName = findHeaderIndex(header, ['jogador']);
+      const iPos = findHeaderIndex(header, ['posi']);
+      const iRating = findHeaderIndex(header, ['nivel', 'rating']);
+
+      if(iTeam === -1 || iName === -1 || iPos === -1){
+        showToast('Não encontrei as colunas Nome do Time / Nome do Jogador / Posição.');
+        return;
+      }
+
+      const groupsMap = {};
+      for(let r = 1; r < rows.length; r++){
+        const row = rows[r];
+        const teamName = String(row[iTeam] || '').trim();
+        const playerName = String(row[iName] || '').trim();
+        if(!teamName || !playerName) continue;
+        const rating = iRating !== -1 ? parseInt(row[iRating]) : 70;
+        const player = {
+          name: playerName,
+          position: mapPtPosition(row[iPos]),
+          rating: isNaN(rating) ? 70 : Math.min(99, Math.max(1, rating)),
+        };
+        if(!groupsMap[teamName]) groupsMap[teamName] = [];
+        groupsMap[teamName].push(player);
+      }
+
+      importGroups = Object.entries(groupsMap).map(([teamName, players]) => ({ teamName, players }));
+      renderImportPreview();
+    }catch(err){
+      showToast('Erro ao ler o arquivo: ' + (err.message || err));
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportPreview(){
+  const el = document.getElementById('importPreview');
+  if(!importGroups.length){
+    el.innerHTML = '<div class="empty">Nenhuma linha válida encontrada.</div>';
+    document.getElementById('btnConfirmImport').style.display = 'none';
+    return;
+  }
+  let html = '';
+  importGroups.forEach(g => {
+    const exists = teams.some(t => normalize(t.name) === normalize(g.teamName));
+    html += `
+      <div style="margin-bottom:10px;">
+        <div style="font-weight:600;font-size:13px;">${g.teamName} ${exists ? '' : '<span class="source-tag">time novo</span>'}</div>
+        <div class="lineup-card-meta">${g.players.length} jogador${g.players.length===1?'':'es'}</div>
+      </div>`;
+  });
+  el.innerHTML = html;
+  document.getElementById('btnConfirmImport').style.display = 'inline-block';
+  const totalPlayers = importGroups.reduce((a,g)=>a+g.players.length, 0);
+  document.getElementById('btnConfirmImport').textContent = `Importar ${importGroups.length} time(s), ${totalPlayers} jogadores`;
+}
+
+window.confirmImport = async function(){
+  const lineupName = document.getElementById('importLineupName').value.trim();
+  if(!lineupName){ showToast('Dá um nome pra escalação.'); return; }
+  if(!importGroups.length) return;
+
+  let teamsCreated = 0, lineupsCreated = 0, playersCreated = 0;
+
+  for(const group of importGroups){
+    let team = teams.find(t => normalize(t.name) === normalize(group.teamName));
+    if(!team){
+      const { data: newTeam, error: teamErr } = await supabase.from('teams')
+        .insert({ name: group.teamName, primary_color: '#6d766c' }).select().single();
+      if(teamErr){ showToast(`Erro ao criar time ${group.teamName}`); continue; }
+      team = newTeam;
+      teams.push(team);
+      teamsCreated++;
+    }
+
+    const { data: lineup, error: lineupErr } = await supabase.from('lineups')
+      .insert({ team_id: team.id, name: lineupName, source: 'import' }).select().single();
+    if(lineupErr){ showToast(`Erro ao criar escalação pra ${group.teamName}`); continue; }
+    lineupsCreated++;
+
+    const rows = group.players.map(p => ({ lineup_id: lineup.id, name: p.name, position: p.position, rating: p.rating }));
+    const { error: playersErr } = await supabase.from('players').insert(rows);
+    if(!playersErr) playersCreated += rows.length;
+  }
+
+  document.getElementById('importDialog').close();
+  showToast(`Importado: ${teamsCreated} time(s) novo(s), ${lineupsCreated} escalação(ões), ${playersCreated} jogadores.`);
+  await loadTeams();
+}
+
 /* ---------------- PLAYERS (within a lineup) ---------------- */
 window.openLineup = async function(id){
   activeLineupId = id;
@@ -641,7 +962,10 @@ function renderPlayersPanel(){
       <thead><tr><th>Posição</th><th>Nome</th><th>Nível</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <button class="btn primary" style="margin-top:14px;" onclick="openPlayerDialog()">+ Novo jogador</button>
+    <div class="btn-row-2" style="margin-top:14px;">
+      <button class="btn primary" onclick="openPlayerDialog()">+ Novo jogador</button>
+      <button class="btn" onclick="openPasteDialog()">📋 Colar lista</button>
+    </div>
   `;
 }
 
@@ -708,6 +1032,8 @@ window.deletePlayerConfirm = async function(){
 window.teamDialog = document.getElementById('teamDialog');
 window.lineupDialog = document.getElementById('lineupDialog');
 window.playerDialog = document.getElementById('playerDialog');
+window.pasteDialog = document.getElementById('pasteDialog');
+window.importDialog = document.getElementById('importDialog');
 loadConfig();
 </script>
 </body>
