@@ -235,7 +235,7 @@
   .team-card.selected.gremio{ border-color: var(--gremio); background: var(--gremio-soft); }
   .team-card.selected.inter{ border-color: var(--inter); background: var(--inter-soft); }
 
-  .crest-wrap{ width:52px; height:56px; margin: 0 auto 10px; }
+  .crest-wrap{ width:84px; height:90px; margin: 0 auto 10px; }
   .crest-wrap svg{ width:100%; height:100%; display:block; }
 
   .team-name{ font-family:'Anton', sans-serif; font-size: 19px; letter-spacing:.5px; }
@@ -367,7 +367,7 @@
   /* ---- match sim ---- */
   .vs-row{ display:flex; align-items:center; justify-content:center; gap:24px; margin: 6px 0 18px; }
   .vs-team{ text-align:center; }
-  .vs-crest{ width:52px; height:56px; margin: 0 auto 8px; }
+  .vs-crest{ width:84px; height:90px; margin: 0 auto 8px; }
   .vs-crest svg{ width:100%; height:100%; }
   .vs-label{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
   .vs-x{ font-family:'Anton', sans-serif; font-size: 18px; color: var(--muted); }
@@ -1077,7 +1077,10 @@ function drawNewRival(){
   document.getElementById('vsUserLabel').textContent = `Teu ${pool.name}`;
 
   document.getElementById('vsCrestRival').innerHTML = crestImg(rivalKey);
-  document.getElementById('vsEraRival').innerHTML = state.rivalSquad.era;
+  const rivalDisplayName = /^\d{4}$/.test((state.rivalSquad.era || '').trim())
+    ? `${POOLS[rivalKey].name} de ${state.rivalSquad.era}`
+    : state.rivalSquad.era;
+  document.getElementById('vsEraRival').innerHTML = rivalDisplayName;
 }
 
 function resetMatchScreen(){

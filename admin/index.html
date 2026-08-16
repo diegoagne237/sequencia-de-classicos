@@ -213,6 +213,9 @@
     <div class="field">
       <label>URL do escudo</label>
       <input type="text" id="teamCrest" placeholder="https://...">
+      <label style="margin-top:10px;">Ou enviar um arquivo</label>
+      <input type="file" id="teamCrestFile" accept="image/*">
+      <button type="button" class="btn small" style="margin-top:6px;" onclick="uploadCrestFile()">Enviar imagem</button>
     </div>
     <div class="field-row">
       <div class="field">
@@ -445,6 +448,7 @@ window.selectTeam = async function(id){
 }
 
 window.openTeamDialog = function(){
+  document.getElementById('teamCrestFile').value = '';
   document.getElementById('teamDialogTitle').textContent = 'Novo time';
   document.getElementById('teamId').value = '';
   document.getElementById('teamName').value = '';
@@ -458,6 +462,7 @@ window.openTeamDialog = function(){
 }
 
 window.editTeam = function(id){
+  document.getElementById('teamCrestFile').value = '';
   const t = teams.find(x=>x.id===id);
   if(!t) return;
   document.getElementById('teamDialogTitle').textContent = 'Editar time';
@@ -470,6 +475,24 @@ window.editTeam = function(id){
   document.getElementById('teamRecordUnbeaten').value = t.record_unbeaten || 0;
   document.getElementById('btnDeleteTeam').style.display = 'inline-block';
   teamDialog.showModal();
+}
+
+window.uploadCrestFile = async function(){
+  const fileInput = document.getElementById('teamCrestFile');
+  const file = fileInput.files[0];
+  if(!file){ showToast('Escolhe uma imagem primeiro.'); return; }
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `crest-${Date.now()}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage.from('crests').upload(path, file, { upsert: true });
+  if(uploadErr){
+    showToast('Erro ao enviar imagem: ' + uploadErr.message);
+    return;
+  }
+  const { data } = supabase.storage.from('crests').getPublicUrl(path);
+  document.getElementById('teamCrest').value = data.publicUrl;
+  showToast('Imagem enviada! Clica em "Salvar" pra confirmar.');
 }
 
 window.saveTeam = async function(){
