@@ -153,26 +153,27 @@
   <h1>Admin de Times</h1>
   <p class="subtitle">Gerencia times, escalações e jogadores usados na Sequência do Clássico.</p>
 
-  <!-- CONFIG GATE -->
-  <div class="panel" id="configPanel">
-    <h2>Conectar ao Supabase</h2>
-    <p class="config-note">Cola a URL e a <b>anon key</b> do teu projeto (Settings → API no dashboard). Fica salvo só neste navegador, em <code>localStorage</code>.</p>
+  <!-- LOGIN GATE -->
+  <div class="panel" id="loginPanel">
+    <h2>Entrar</h2>
+    <p class="config-note">Acesso restrito à gestão dos times. Fala com o Diego se precisar de um login.</p>
     <div class="field">
-      <label>Project URL</label>
-      <input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co">
+      <label>E-mail</label>
+      <input type="text" id="loginEmail" placeholder="voce@exemplo.com">
     </div>
     <div class="field">
-      <label>Anon public key</label>
-      <input type="text" id="cfgKey" placeholder="eyJhbGciOi...">
+      <label>Senha</label>
+      <input type="password" id="loginPassword" placeholder="••••••••">
     </div>
-    <button class="btn primary" onclick="saveConfig()">Salvar e conectar</button>
+    <button class="btn primary" onclick="doLogin()">Entrar</button>
+    <p id="loginError" style="color:var(--danger);font-size:12px;margin-top:10px;display:none;"></p>
   </div>
 
   <!-- MAIN APP -->
   <div id="mainApp" style="display:none;">
     <div class="top-actions">
-      <span class="conn-status">Conectado a <b id="connUrl"></b></span>
-      <button class="btn small" onclick="resetConfig()">Trocar projeto</button>
+      <span class="conn-status">Logado como <b id="connUrl"></b></span>
+      <button class="btn small" onclick="doLogout()">Sair</button>
     </div>
 
     <div class="layout">
@@ -352,7 +353,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm';
 
-let supabase = null;
+/* ---------------- SUPABASE (hardcoded — anon key is safe to expose client-side, RLS does the real gating) ---------------- */
+const SUPABASE_URL = 'https://twhrbgesfpckscqzplch.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3aHJiZ2VzZnBja3NjcXpwbGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NDY0NjMsImV4cCI6MjEwMjQyMjQ2M30.5RzKYyGPkVkEjln-Er1M2JNZhmVlGH-0IXkoWRLOmO0';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let teams = [];
 let lineups = [];
 let players = [];
@@ -363,42 +369,42 @@ let selectedMethod = null;
 const POS_LABEL = { GK:'Goleiro', DF:'Defensor', MF:'Meio-campo', FW:'Atacante' };
 const POS_ORDER = ['GK','DF','MF','FW'];
 
-/* ---------------- CONFIG ---------------- */
-function loadConfig(){
-  const url = localStorage.getItem('sdc_supabase_url');
-  const key = localStorage.getItem('sdc_supabase_key');
-  if(url && key) connect(url, key);
+/* ---------------- AUTH ---------------- */
+async function checkSession(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if(session){
+    await enterApp(session.user.email);
+  } else {
+    document.getElementById('loginPanel').style.display = 'block';
+  }
 }
 
-window.saveConfig = function(){
-  let url = document.getElementById('cfgUrl').value.trim();
-  const key = document.getElementById('cfgKey').value.trim();
-  url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-  if(!url || !key){ showToast('Preenche URL e chave.'); return; }
-  localStorage.setItem('sdc_supabase_url', url);
-  localStorage.setItem('sdc_supabase_key', key);
-  connect(url, key);
+window.doLogin = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if(!email || !password){ errEl.textContent = 'Preenche e-mail e senha.'; errEl.style.display = 'block'; return; }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){
+    errEl.textContent = 'E-mail ou senha incorretos.';
+    errEl.style.display = 'block';
+    return;
+  }
+  await enterApp(data.user.email);
 }
 
-window.resetConfig = function(){
-  if(!confirm('Desconectar deste projeto Supabase?')) return;
-  localStorage.removeItem('sdc_supabase_url');
-  localStorage.removeItem('sdc_supabase_key');
+window.doLogout = async function(){
+  await supabase.auth.signOut();
   location.reload();
 }
 
-async function connect(url, key){
-  try{
-    supabase = createClient(url, key);
-    const { error } = await supabase.from('teams').select('id').limit(1);
-    if(error) throw error;
-    document.getElementById('configPanel').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('connUrl').textContent = new URL(url).host;
-    await loadTeams();
-  }catch(err){
-    alert('Não consegui conectar: ' + (err.message || err));
-  }
+async function enterApp(email){
+  document.getElementById('loginPanel').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('connUrl').textContent = email;
+  await loadTeams();
 }
 
 function showToast(msg){
@@ -1041,7 +1047,7 @@ window.lineupDialog = document.getElementById('lineupDialog');
 window.playerDialog = document.getElementById('playerDialog');
 window.pasteDialog = document.getElementById('pasteDialog');
 window.importDialog = document.getElementById('importDialog');
-loadConfig();
+checkSession();
 </script>
 </body>
 </html>

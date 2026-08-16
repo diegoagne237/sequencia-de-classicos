@@ -515,25 +515,8 @@
 <body data-team="gremio">
 <div class="app">
 
-  <!-- CONFIG GATE: connect to Supabase (shares login with the admin, same origin) -->
-  <div class="panel" id="configPanel" style="display:none;">
-    <h2>Conectar ao banco de dados</h2>
-    <p class="config-note" style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-      Cola a URL e a <b>anon key</b> do projeto Supabase (as mesmas usadas no admin). Fica salvo só neste navegador.
-    </p>
-    <div style="margin-bottom:12px;">
-      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Project URL</label>
-      <input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:'Oswald',sans-serif;font-size:14px;">
-    </div>
-    <div style="margin-bottom:14px;">
-      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Anon public key</label>
-      <input type="text" id="cfgKey" placeholder="eyJhbGciOi..." style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:'Oswald',sans-serif;font-size:14px;">
-    </div>
-    <button class="cta" style="margin-top:0;" onclick="saveGameConfig()">Salvar e conectar</button>
-  </div>
-
   <!-- LOADING STATE -->
-  <div class="panel" id="loadingPanel" style="display:none; text-align:center; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:13px;">
+  <div class="panel" id="loadingPanel" style="text-align:center; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:13px;">
     Carregando times e escalações…
   </div>
 
@@ -773,38 +756,18 @@ function normalize(s){
   return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-function loadGameConfig(){
-  const url = localStorage.getItem('sdc_supabase_url');
-  const key = localStorage.getItem('sdc_supabase_key');
-  if(url && key){
-    connectGame(url, key);
-  } else {
-    document.getElementById('configPanel').style.display = 'block';
-  }
-}
+/* Hardcoded — anon key is safe to expose client-side; RLS does the real gating */
+const SUPABASE_URL = 'https://twhrbgesfpckscqzplch.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3aHJiZ2VzZnBja3NjcXpwbGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NDY0NjMsImV4cCI6MjEwMjQyMjQ2M30.5RzKYyGPkVkEjln-Er1M2JNZhmVlGH-0IXkoWRLOmO0';
 
-window.saveGameConfig = function(){
-  let url = document.getElementById('cfgUrl').value.trim();
-  const key = document.getElementById('cfgKey').value.trim();
-  url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-  if(!url || !key){ alert('Preenche URL e chave.'); return; }
-  localStorage.setItem('sdc_supabase_url', url);
-  localStorage.setItem('sdc_supabase_key', key);
-  connectGame(url, key);
-}
-
-async function connectGame(url, key){
+async function initGame(){
   try{
-    supabase = createClient(url, key);
-    document.getElementById('configPanel').style.display = 'none';
-    document.getElementById('loadingPanel').style.display = 'block';
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     await loadGameData();
     document.getElementById('loadingPanel').style.display = 'none';
     document.getElementById('gameRoot').style.display = 'block';
   }catch(err){
-    document.getElementById('loadingPanel').style.display = 'none';
-    document.getElementById('configPanel').style.display = 'block';
-    alert('Não consegui conectar ou carregar os dados: ' + (err.message || err));
+    document.getElementById('loadingPanel').textContent = 'Não consegui carregar os dados: ' + (err.message || err);
   }
 }
 
@@ -1386,7 +1349,7 @@ window.closeModal = closeModal;
 window.saveShareImage = saveShareImage;
 window.previewEnd = previewEnd;
 
-loadGameConfig();
+initGame();
 </script>
 </body>
 </html>
