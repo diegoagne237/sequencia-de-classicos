@@ -328,14 +328,10 @@
   <div class="dialog-body">
     <h2>Importar planilha</h2>
     <p class="config-note">
-      Colunas esperadas: <b>Nome do Time</b>, <b>Nome do Jogador</b>, <b>Posição</b>, <b>Nível</b>.
-      Times que ainda não existem são criados automaticamente. Cada time encontrado na planilha ganha
-      <b>uma escalação nova</b> com o nome que você definir abaixo.
+      Colunas esperadas: <b>Nome da Escalação</b>, <b>Nome do Jogador</b>, <b>Posição</b>, <b>Nível</b>.
+      Cria uma escalação nova pra cada nome diferente encontrado na coluna, dentro do time
+      <b id="importTeamName">selecionado</b>.
     </p>
-    <div class="field">
-      <label>Nome da escalação (aplicado a todos os times da planilha)</label>
-      <input type="text" id="importLineupName" placeholder='Ex: "Libertadores de 2017"'>
-    </div>
     <div class="field">
       <label>Arquivo (.xlsx ou .csv)</label>
       <input type="file" id="importFile" accept=".xlsx,.csv">
@@ -796,7 +792,8 @@ window.confirmPasteImport = async function(){
 let importGroups = [];
 
 window.openImportDialog = function(){
-  document.getElementById('importLineupName').value = '';
+  if(!activeTeamId){ showToast('Selecione um time primeiro.'); return; }
+  document.getElementById('importTeamName').textContent = teams.find(t=>t.id===activeTeamId)?.name || '';
   document.getElementById('importFile').value = '';
   document.getElementById('importPreview').innerHTML = '';
   document.getElementById('btnConfirmImport').style.display = 'none';
@@ -827,33 +824,33 @@ window.processImportFile = function(){
       if(!rows.length){ showToast('Planilha vazia.'); return; }
 
       const header = rows[0];
-      const iTeam = findHeaderIndex(header, ['time']);
+      const iLineup = findHeaderIndex(header, ['escala', 'nome do time', 'time']);
       const iName = findHeaderIndex(header, ['jogador']);
       const iPos = findHeaderIndex(header, ['posi']);
       const iRating = findHeaderIndex(header, ['nivel', 'rating']);
 
-      if(iTeam === -1 || iName === -1 || iPos === -1){
-        showToast('Não encontrei as colunas Nome do Time / Nome do Jogador / Posição.');
+      if(iLineup === -1 || iName === -1 || iPos === -1){
+        showToast('Não encontrei as colunas Nome da Escalação / Nome do Jogador / Posição.');
         return;
       }
 
       const groupsMap = {};
       for(let r = 1; r < rows.length; r++){
         const row = rows[r];
-        const teamName = String(row[iTeam] || '').trim();
+        const lineupName = String(row[iLineup] || '').trim();
         const playerName = String(row[iName] || '').trim();
-        if(!teamName || !playerName) continue;
+        if(!lineupName || !playerName) continue;
         const rating = iRating !== -1 ? parseInt(row[iRating]) : 70;
         const player = {
           name: playerName,
           position: mapPtPosition(row[iPos]),
           rating: isNaN(rating) ? 70 : Math.min(99, Math.max(1, rating)),
         };
-        if(!groupsMap[teamName]) groupsMap[teamName] = [];
-        groupsMap[teamName].push(player);
+        if(!groupsMap[lineupName]) groupsMap[lineupName] = [];
+        groupsMap[lineupName].push(player);
       }
 
-      importGroups = Object.entries(groupsMap).map(([teamName, players]) => ({ teamName, players }));
+      importGroups = Object.entries(groupsMap).map(([lineupName, players]) => ({ lineupName, players }));
       renderImportPreview();
     }catch(err){
       showToast('Erro ao ler o arquivo: ' + (err.message || err));
@@ -871,40 +868,27 @@ function renderImportPreview(){
   }
   let html = '';
   importGroups.forEach(g => {
-    const exists = teams.some(t => normalize(t.name) === normalize(g.teamName));
     html += `
       <div style="margin-bottom:10px;">
-        <div style="font-weight:600;font-size:13px;">${g.teamName} ${exists ? '' : '<span class="source-tag">time novo</span>'}</div>
+        <div style="font-weight:600;font-size:13px;">${g.lineupName}</div>
         <div class="lineup-card-meta">${g.players.length} jogador${g.players.length===1?'':'es'}</div>
       </div>`;
   });
   el.innerHTML = html;
   document.getElementById('btnConfirmImport').style.display = 'inline-block';
   const totalPlayers = importGroups.reduce((a,g)=>a+g.players.length, 0);
-  document.getElementById('btnConfirmImport').textContent = `Importar ${importGroups.length} time(s), ${totalPlayers} jogadores`;
+  document.getElementById('btnConfirmImport').textContent = `Importar ${importGroups.length} escalação(ões), ${totalPlayers} jogadores`;
 }
 
 window.confirmImport = async function(){
-  const lineupName = document.getElementById('importLineupName').value.trim();
-  if(!lineupName){ showToast('Dá um nome pra escalação.'); return; }
   if(!importGroups.length) return;
 
-  let teamsCreated = 0, lineupsCreated = 0, playersCreated = 0;
+  let lineupsCreated = 0, playersCreated = 0;
 
   for(const group of importGroups){
-    let team = teams.find(t => normalize(t.name) === normalize(group.teamName));
-    if(!team){
-      const { data: newTeam, error: teamErr } = await supabase.from('teams')
-        .insert({ name: group.teamName, primary_color: '#6d766c' }).select().single();
-      if(teamErr){ showToast(`Erro ao criar time ${group.teamName}`); continue; }
-      team = newTeam;
-      teams.push(team);
-      teamsCreated++;
-    }
-
     const { data: lineup, error: lineupErr } = await supabase.from('lineups')
-      .insert({ team_id: team.id, name: lineupName, source: 'import' }).select().single();
-    if(lineupErr){ showToast(`Erro ao criar escalação pra ${group.teamName}`); continue; }
+      .insert({ team_id: activeTeamId, name: group.lineupName, source: 'import' }).select().single();
+    if(lineupErr){ showToast(`Erro ao criar escalação "${group.lineupName}"`); continue; }
     lineupsCreated++;
 
     const rows = group.players.map(p => ({ lineup_id: lineup.id, name: p.name, position: p.position, rating: p.rating }));
@@ -913,8 +897,8 @@ window.confirmImport = async function(){
   }
 
   document.getElementById('importDialog').close();
-  showToast(`Importado: ${teamsCreated} time(s) novo(s), ${lineupsCreated} escalação(ões), ${playersCreated} jogadores.`);
-  await loadTeams();
+  showToast(`Importado: ${lineupsCreated} escalação(ões), ${playersCreated} jogadores.`);
+  await loadLineups(activeTeamId);
 }
 
 /* ---------------- PLAYERS (within a lineup) ---------------- */
