@@ -514,6 +514,30 @@
 <body data-team="gremio">
 <div class="app">
 
+  <!-- CONFIG GATE: connect to Supabase (shares login with the admin, same origin) -->
+  <div class="panel" id="configPanel" style="display:none;">
+    <h2>Conectar ao banco de dados</h2>
+    <p class="config-note" style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
+      Cola a URL e a <b>anon key</b> do projeto Supabase (as mesmas usadas no admin). Fica salvo só neste navegador.
+    </p>
+    <div style="margin-bottom:12px;">
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Project URL</label>
+      <input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:'Oswald',sans-serif;font-size:14px;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">Anon public key</label>
+      <input type="text" id="cfgKey" placeholder="eyJhbGciOi..." style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font-family:'Oswald',sans-serif;font-size:14px;">
+    </div>
+    <button class="cta" style="margin-top:0;" onclick="saveGameConfig()">Salvar e conectar</button>
+  </div>
+
+  <!-- LOADING STATE -->
+  <div class="panel" id="loadingPanel" style="display:none; text-align:center; color:var(--muted); font-family:'IBM Plex Mono',monospace; font-size:13px;">
+    Carregando times e escalações…
+  </div>
+
+  <div id="gameRoot" style="display:none;">
+
   <div class="scoreboard" id="scoreboard">
     <div class="sb-top">
       <span class="sb-label" id="sbTeamLabel">—</span>
@@ -541,13 +565,13 @@
       <div class="records-grid">
         <div class="record-group gremio">
           <div class="record-group-label">Grêmio</div>
-          <div class="record-pill">Vitórias seguidas <b>6</b></div>
-          <div class="record-pill">Invencibilidade <b>13</b></div>
+          <div class="record-pill">Vitórias seguidas <b id="gremioRecordWin">–</b></div>
+          <div class="record-pill">Invencibilidade <b id="gremioRecordUnbeaten">–</b></div>
         </div>
         <div class="record-group inter">
           <div class="record-group-label">Inter</div>
-          <div class="record-pill">Vitórias seguidas <b>5</b></div>
-          <div class="record-pill">Invencibilidade <b>17</b></div>
+          <div class="record-pill">Vitórias seguidas <b id="interRecordWin">–</b></div>
+          <div class="record-pill">Invencibilidade <b id="interRecordUnbeaten">–</b></div>
         </div>
       </div>
     </div>
@@ -568,12 +592,12 @@
         <div class="team-card gremio" data-team="gremio" onclick="selectTeam('gremio')">
           <div class="crest-wrap" id="crestSelectGremio"></div>
           <div class="team-name">Grêmio</div>
-          <div class="team-record">Recorde: 6 vitórias · 13 invicto</div>
+          <div class="team-record" id="teamRecordGremio">—</div>
         </div>
         <div class="team-card inter" data-team="inter" onclick="selectTeam('inter')">
           <div class="crest-wrap" id="crestSelectInter"></div>
           <div class="team-name">Inter</div>
-          <div class="team-record">Recorde: 5 vitórias · 17 invicto</div>
+          <div class="team-record" id="teamRecordInter">—</div>
         </div>
       </div>
 
@@ -659,7 +683,8 @@
     </div>
   </div>
 
-  <div class="footer-note">PROTÓTIPO DE LAYOUT · dados de elenco ainda parciais</div>
+  <div class="footer-note">Dados conectados ao admin · Sequência do Clássico</div>
+  </div><!-- /gameRoot -->
 </div>
 
 <!-- END OF RUN — share modal -->
@@ -696,242 +721,32 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+let supabase = null;
+
 /* ---------------- CRESTS ---------------- */
-const CREST_URLS = {
-  gremio: 'https://logodetimes.com/wp-content/uploads/gremio.png',
-  inter: 'https://logodetimes.com/wp-content/uploads/internacional.png'
+let TEAM_META = {
+  gremio: { crest_url: 'https://logodetimes.com/wp-content/uploads/gremio.png' },
+  inter: { crest_url: 'https://logodetimes.com/wp-content/uploads/internacional.png' }
 };
 function crestImg(team){
-  return `<img src="${CREST_URLS[team]}" alt="Escudo ${POOLS[team] ? POOLS[team].name : team}" style="width:100%;height:100%;object-fit:contain;">`;
+  const url = TEAM_META[team]?.crest_url || '';
+  return `<img src="${url}" alt="Escudo ${POOLS[team] ? POOLS[team].name : team}" style="width:100%;height:100%;object-fit:contain;">`;
 }
 
-/* ---------------- DATA ---------------- */
-const POOLS = {
-  gremio: {
-    name: "Grêmio",
-    short: "GR",
-    recordWin: 6, targetWin: 7,
-    recordUnbeaten: 13, targetUnbeaten: 14,
-    players: [
-      {name:"Danrlei", pos:"GK", era:"1995", rating:82},
-      {name:"Eurico", pos:"GK", era:"1977", rating:74},
-      {name:"Adilson", pos:"DF", era:"1995 · cap.", rating:85},
-      {name:"Mauro Galvão", pos:"DF", era:"1995", rating:83},
-      {name:"Roger", pos:"DF", era:"1995", rating:80},
-      {name:"Rivarola", pos:"DF", era:"1995", rating:79},
-      {name:"Arce", pos:"DF", era:"1995", rating:78},
-      {name:"Victor Hugo", pos:"DF", era:"1977", rating:72},
-      {name:"Cassiá", pos:"DF", era:"1977", rating:71},
-      {name:"Corso", pos:"DF", era:"1977", rating:70},
-      {name:"Oberdan", pos:"DF", era:"1977", rating:70},
-      {name:"Dinho", pos:"MF", era:"1995", rating:84},
-      {name:"Emerson", pos:"MF", era:"1995", rating:83},
-      {name:"Carlos Miguel", pos:"MF", era:"1995", rating:82},
-      {name:"Arílson", pos:"MF", era:"1995", rating:81},
-      {name:"Luís Carlos Goiano", pos:"MF", era:"1995", rating:80},
-      {name:"Tarciso", pos:"MF", era:"1977", rating:72},
-      {name:"Ladinho", pos:"MF", era:"1977", rating:71},
-      {name:"Tadeu", pos:"MF", era:"1977", rating:70},
-      {name:"Jardel", pos:"FW", era:"1995", rating:93},
-      {name:"Paulo Nunes", pos:"FW", era:"1995", rating:88},
-      {name:"André Catimba", pos:"FW", era:"1977", rating:76},
-      {name:"Alcindo", pos:"FW", era:"1977", rating:75},
-      {name:"Éder", pos:"FW", era:"1977", rating:74},
-      {name:"Iura", pos:"FW", era:"1977", rating:73},
-      {name:"Vilson", pos:"FW", era:"1977", rating:68},
-      {name:"Marcelo Grohe", pos:"GK", era:"2017", rating:84},
-      {name:"Edílson", pos:"DF", era:"2017", rating:79},
-      {name:"Geromel", pos:"DF", era:"2017", rating:88},
-      {name:"Kannemann", pos:"DF", era:"2017", rating:87},
-      {name:"Cortez", pos:"DF", era:"2017", rating:80},
-      {name:"Michel", pos:"MF", era:"2017", rating:82},
-      {name:"Ramiro", pos:"MF", era:"2017", rating:83},
-      {name:"Maicon", pos:"MF", era:"2017", rating:78},
-      {name:"Douglas", pos:"MF", era:"2017", rating:81},
-      {name:"Luan", pos:"FW", era:"2017", rating:89},
-      {name:"Everton", pos:"FW", era:"2017", rating:90},
-      {name:"Márcio", pos:"GK", era:"2004", rating:62},
-      {name:"George", pos:"DF", era:"2004", rating:60},
-      {name:"Alex Xavier", pos:"DF", era:"2004", rating:61},
-      {name:"Baloy", pos:"DF", era:"2004", rating:63},
-      {name:"Cristiano", pos:"DF", era:"2004", rating:60},
-      {name:"Cocito", pos:"MF", era:"2004", rating:62},
-      {name:"Leanderson", pos:"MF", era:"2004", rating:65},
-      {name:"Felipe Melo", pos:"MF", era:"2004", rating:70},
-      {name:"Anderson (2004)", pos:"MF", era:"2004", rating:61},
-      {name:"Marcelinho", pos:"FW", era:"2004", rating:66},
-      {name:"Cláudio Pitbull", pos:"FW", era:"2004", rating:63},
-    ]
-  },
-  inter: {
-    name: "Inter",
-    short: "IN",
-    recordWin: 5, targetWin: 6,
-    recordUnbeaten: 17, targetUnbeaten: 18,
-    players: [
-      {name:"Abbondanzieri", pos:"GK", era:"2010", rating:86},
-      {name:"Clemer", pos:"GK", era:"2006", rating:80},
-      {name:"Índio", pos:"DF", era:"2006", rating:82},
-      {name:"Bolívar", pos:"DF", era:"2010", rating:81},
-      {name:"Fabiano Eller", pos:"DF", era:"2006", rating:79},
-      {name:"Sorondo", pos:"DF", era:"2010", rating:78},
-      {name:"Ceará", pos:"DF", era:"2006", rating:78},
-      {name:"Kleber", pos:"DF", era:"2010", rating:77},
-      {name:"Nei", pos:"DF", era:"2010", rating:76},
-      {name:"Rubens Cardoso", pos:"DF", era:"2006", rating:75},
-      {name:"D'Alessandro", pos:"MF", era:"2010", rating:92},
-      {name:"Alex", pos:"MF", era:"2006", rating:84},
-      {name:"Guiñazú", pos:"MF", era:"2010", rating:82},
-      {name:"Andrezinho", pos:"MF", era:"2010", rating:80},
-      {name:"Edinho", pos:"MF", era:"2006", rating:80},
-      {name:"Sandro", pos:"MF", era:"2010", rating:79},
-      {name:"Vargas", pos:"MF", era:"2006", rating:77},
-      {name:"Wellington Monteiro", pos:"MF", era:"2006", rating:76},
-      {name:"Alexandre Pato", pos:"FW", era:"2006", rating:85},
-      {name:"Fernandão", pos:"FW", era:"2006", rating:83},
-      {name:"Alecsandro", pos:"FW", era:"2010", rating:82},
-      {name:"Iarley", pos:"FW", era:"2006", rating:81},
-      {name:"Walter", pos:"FW", era:"2010", rating:79},
-      {name:"Luiz Adriano", pos:"FW", era:"2006", rating:80},
-      {name:"Adriano Gabiru", pos:"FW", era:"2006", rating:78},
-      {name:"Danilo Fernandes", pos:"GK", era:"2016", rating:68},
-      {name:"William", pos:"DF", era:"2016", rating:62},
-      {name:"Paulão", pos:"DF", era:"2016", rating:65},
-      {name:"Ernando", pos:"DF", era:"2016", rating:64},
-      {name:"Fabinho", pos:"DF", era:"2016", rating:63},
-      {name:"Anderson", pos:"MF", era:"2016", rating:66},
-      {name:"Valdivia", pos:"MF", era:"2016", rating:64},
-      {name:"Artur", pos:"MF", era:"2016", rating:60},
-      {name:"Luis Seijas", pos:"MF", era:"2016", rating:61},
-      {name:"Vitinho", pos:"FW", era:"2016", rating:70},
-      {name:"Aylon", pos:"FW", era:"2016", rating:63},
-    ]
-  }
+/* ---------------- DATA (loaded live from Supabase — see loadGameData()) ---------------- */
+let POOLS = {
+  gremio: { name: "Grêmio", short: "GR", recordWin: 0, targetWin: 1, recordUnbeaten: 0, targetUnbeaten: 1, players: [] },
+  inter: { name: "Inter", short: "IN", recordWin: 0, targetWin: 1, recordUnbeaten: 0, targetUnbeaten: 1, players: [] }
 };
 
 const SLOTS = { GK:1, DF:4, MF:4, FW:2 };
 const POS_LABEL = { GK:"Goleiro", DF:"Defensores", MF:"Meio-campo", FW:"Atacantes" };
 
-// Real historic starting XIs, used as the "rival" side each match (era shown to the player)
-const RIVAL_SQUADS = {
-  gremio: [
-    {
-      era: "Grêmio 2004 — Ano do rebaixamento",
-      players: [
-        {name:"Márcio", pos:"GK", rating:62},
-        {name:"George", pos:"DF", rating:60},
-        {name:"Alex Xavier", pos:"DF", rating:61},
-        {name:"Baloy", pos:"DF", rating:63},
-        {name:"Cristiano", pos:"DF", rating:60},
-        {name:"Cocito", pos:"MF", rating:62},
-        {name:"Leanderson", pos:"MF", rating:65},
-        {name:"Felipe Melo", pos:"MF", rating:70},
-        {name:"Anderson", pos:"MF", rating:61},
-        {name:"Marcelinho", pos:"FW", rating:66},
-        {name:"Cláudio Pitbull", pos:"FW", rating:63},
-      ]
-    },
-    {
-      era: "Grêmio 1977 — Campeão Gaúcho",
-      players: [
-        {name:"Eurico", pos:"GK", rating:74},
-        {name:"Victor Hugo", pos:"DF", rating:72},
-        {name:"Corso", pos:"DF", rating:70},
-        {name:"Cassiá", pos:"DF", rating:71},
-        {name:"Oberdan", pos:"DF", rating:70},
-        {name:"Ladinho", pos:"MF", rating:71},
-        {name:"Tarciso", pos:"MF", rating:72},
-        {name:"Tadeu", pos:"MF", rating:70},
-        {name:"André Catimba", pos:"FW", rating:76},
-        {name:"Iura", pos:"FW", rating:73},
-        {name:"Éder", pos:"FW", rating:74},
-      ]
-    },
-    {
-      era: "Grêmio 1995 — Bicampeão da Libertadores",
-      players: [
-        {name:"Danrlei", pos:"GK", rating:82},
-        {name:"Arce", pos:"DF", rating:78},
-        {name:"Rivarola", pos:"DF", rating:79},
-        {name:"Adilson", pos:"DF", rating:85},
-        {name:"Roger", pos:"DF", rating:80},
-        {name:"Dinho", pos:"MF", rating:84},
-        {name:"Luís Carlos Goiano", pos:"MF", rating:80},
-        {name:"Arílson", pos:"MF", rating:81},
-        {name:"Carlos Miguel", pos:"MF", rating:82},
-        {name:"Paulo Nunes", pos:"FW", rating:88},
-        {name:"Jardel", pos:"FW", rating:93},
-      ]
-    },
-    {
-      era: "Grêmio 2017 — Campeão da Libertadores",
-      players: [
-        {name:"Marcelo Grohe", pos:"GK", rating:84},
-        {name:"Edílson", pos:"DF", rating:79},
-        {name:"Geromel", pos:"DF", rating:88},
-        {name:"Kannemann", pos:"DF", rating:87},
-        {name:"Cortez", pos:"DF", rating:80},
-        {name:"Michel", pos:"MF", rating:82},
-        {name:"Ramiro", pos:"MF", rating:83},
-        {name:"Maicon", pos:"MF", rating:78},
-        {name:"Douglas", pos:"MF", rating:81},
-        {name:"Luan", pos:"FW", rating:89},
-        {name:"Everton", pos:"FW", rating:90},
-      ]
-    }
-  ],
-  inter: [
-    {
-      era: "Inter 2016 — Ano do rebaixamento",
-      players: [
-        {name:"Danilo Fernandes", pos:"GK", rating:68},
-        {name:"William", pos:"DF", rating:62},
-        {name:"Paulão", pos:"DF", rating:65},
-        {name:"Ernando", pos:"DF", rating:64},
-        {name:"Fabinho", pos:"DF", rating:63},
-        {name:"Anderson", pos:"MF", rating:66},
-        {name:"Valdivia", pos:"MF", rating:64},
-        {name:"Artur", pos:"MF", rating:60},
-        {name:"Luis Seijas", pos:"MF", rating:61},
-        {name:"Vitinho", pos:"FW", rating:70},
-        {name:"Aylon", pos:"FW", rating:63},
-      ]
-    },
-    {
-      era: "Inter 2006 — Campeão Mundial FIFA",
-      players: [
-        {name:"Clemer", pos:"GK", rating:80},
-        {name:"Ceará", pos:"DF", rating:78},
-        {name:"Índio", pos:"DF", rating:82},
-        {name:"Fabiano Eller", pos:"DF", rating:79},
-        {name:"Rubens Cardoso", pos:"DF", rating:75},
-        {name:"Edinho", pos:"MF", rating:80},
-        {name:"Wellington Monteiro", pos:"MF", rating:76},
-        {name:"Alex", pos:"MF", rating:84},
-        {name:"Fernandão", pos:"FW", rating:83},
-        {name:"Alexandre Pato", pos:"FW", rating:85},
-        {name:"Iarley", pos:"FW", rating:81},
-      ]
-    },
-    {
-      era: "Inter 2010 — Bicampeão da Libertadores",
-      players: [
-        {name:"Abbondanzieri", pos:"GK", rating:86},
-        {name:"Nei", pos:"DF", rating:76},
-        {name:"Bolívar", pos:"DF", rating:81},
-        {name:"Sorondo", pos:"DF", rating:78},
-        {name:"Kleber", pos:"DF", rating:77},
-        {name:"Sandro", pos:"MF", rating:79},
-        {name:"Guiñazú", pos:"MF", rating:82},
-        {name:"Andrezinho", pos:"MF", rating:80},
-        {name:"D'Alessandro", pos:"MF", rating:92},
-        {name:"Alecsandro", pos:"FW", rating:82},
-        {name:"Walter", pos:"FW", rating:79},
-      ]
-    }
-  ]
-};
+// Real historic starting XIs used as the "rival" side each match — loaded live, see loadGameData()
+let RIVAL_SQUADS = { gremio: [], inter: [] };
 
 let state = {
   team: null,
@@ -952,9 +767,113 @@ let state = {
   score: { mine:0, rival:0 },
 };
 
-/* ---------------- INIT ---------------- */
-document.getElementById('crestSelectGremio').innerHTML = crestImg('gremio');
-document.getElementById('crestSelectInter').innerHTML = crestImg('inter');
+/* ---------------- CONFIG / DATA LOADING ---------------- */
+function normalize(s){
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function loadGameConfig(){
+  const url = localStorage.getItem('sdc_supabase_url');
+  const key = localStorage.getItem('sdc_supabase_key');
+  if(url && key){
+    connectGame(url, key);
+  } else {
+    document.getElementById('configPanel').style.display = 'block';
+  }
+}
+
+window.saveGameConfig = function(){
+  let url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  if(!url || !key){ alert('Preenche URL e chave.'); return; }
+  localStorage.setItem('sdc_supabase_url', url);
+  localStorage.setItem('sdc_supabase_key', key);
+  connectGame(url, key);
+}
+
+async function connectGame(url, key){
+  try{
+    supabase = createClient(url, key);
+    document.getElementById('configPanel').style.display = 'none';
+    document.getElementById('loadingPanel').style.display = 'block';
+    await loadGameData();
+    document.getElementById('loadingPanel').style.display = 'none';
+    document.getElementById('gameRoot').style.display = 'block';
+  }catch(err){
+    document.getElementById('loadingPanel').style.display = 'none';
+    document.getElementById('configPanel').style.display = 'block';
+    alert('Não consegui conectar ou carregar os dados: ' + (err.message || err));
+  }
+}
+
+async function loadGameData(){
+  const { data: teamsData, error: teamsErr } = await supabase.from('teams').select('*');
+  if(teamsErr) throw teamsErr;
+
+  const gremioTeam = teamsData.find(t => normalize(t.name) === 'gremio');
+  const interTeam = teamsData.find(t => normalize(t.name).includes('inter'));
+  if(!gremioTeam || !interTeam){
+    throw new Error('Preciso de um time chamado "Grêmio" e outro "Inter" cadastrados no admin.');
+  }
+  const TEAM_ROW = { gremio: gremioTeam, inter: interTeam };
+
+  const { data: lineupsData, error: lineupsErr } = await supabase
+    .from('lineups').select('*, players(*)').eq('active', true);
+  if(lineupsErr) throw lineupsErr;
+
+  ['gremio','inter'].forEach(key=>{
+    const row = TEAM_ROW[key];
+    TEAM_META[key] = { crest_url: row.crest_url || TEAM_META[key]?.crest_url || '' };
+
+    const myLineups = lineupsData.filter(l => l.team_id === row.id && l.players?.length);
+    const pooledPlayers = [];
+    myLineups.forEach(l=>{
+      (l.players || []).forEach(p=>{
+        pooledPlayers.push({ name: p.name, pos: p.position, era: l.name, rating: p.rating });
+      });
+    });
+
+    POOLS[key] = {
+      name: row.name,
+      short: row.short_code || (key === 'gremio' ? 'GR' : 'IN'),
+      recordWin: row.record_win || 0,
+      targetWin: (row.record_win || 0) + 1,
+      recordUnbeaten: row.record_unbeaten || 0,
+      targetUnbeaten: (row.record_unbeaten || 0) + 1,
+      players: pooledPlayers,
+    };
+  });
+
+  // rival squads: each active lineup of a team is used as the opposing squad when playing the OTHER team
+  RIVAL_SQUADS.gremio = (lineupsData.filter(l => l.team_id === interTeam.id && l.players?.length >= 3))
+    .map(l => ({ era: l.name, players: l.players.map(p=>({ name:p.name, pos:p.position, rating:p.rating })) }));
+  RIVAL_SQUADS.inter = (lineupsData.filter(l => l.team_id === gremioTeam.id && l.players?.length >= 3))
+    .map(l => ({ era: l.name, players: l.players.map(p=>({ name:p.name, pos:p.position, rating:p.rating })) }));
+
+  // populate cover screen with live data
+  document.getElementById('gremioRecordWin').textContent = POOLS.gremio.recordWin;
+  document.getElementById('gremioRecordUnbeaten').textContent = POOLS.gremio.recordUnbeaten;
+  document.getElementById('interRecordWin').textContent = POOLS.inter.recordWin;
+  document.getElementById('interRecordUnbeaten').textContent = POOLS.inter.recordUnbeaten;
+  document.getElementById('teamRecordGremio').textContent = `Recorde: ${POOLS.gremio.recordWin} vitórias · ${POOLS.gremio.recordUnbeaten} invicto`;
+  document.getElementById('teamRecordInter').textContent = `Recorde: ${POOLS.inter.recordWin} vitórias · ${POOLS.inter.recordUnbeaten} invicto`;
+  document.getElementById('crestSelectGremio').innerHTML = crestImg('gremio');
+  document.getElementById('crestSelectInter').innerHTML = crestImg('inter');
+
+  // guard: disable team selection if there isn't enough data to actually draft/play
+  ['gremio','inter'].forEach(key=>{
+    const enoughPool = POOLS[key].players.length >= 11;
+    const rivalKey = key === 'gremio' ? 'inter' : 'gremio';
+    const enoughRival = RIVAL_SQUADS[rivalKey].length >= 1;
+    const card = document.querySelector(`.team-card.${key}`);
+    if(!enoughPool || !enoughRival){
+      card.style.opacity = '.4';
+      card.style.pointerEvents = 'none';
+      card.querySelector('.team-record').textContent = 'Cadastra mais escalações no admin pra liberar';
+    }
+  });
+}
 
 /* ---------------- SETUP SCREEN ---------------- */
 function selectTeam(team){
@@ -1447,6 +1366,8 @@ function switchScreen(id){
     updateScoreboard();
   }
 }
+
+loadGameConfig();
 </script>
 </body>
 </html>
