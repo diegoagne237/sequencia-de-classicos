@@ -26,7 +26,7 @@
     margin:0; min-height:100vh; background: var(--bg); color: var(--text);
     font-family:'Oswald', sans-serif; padding: 28px 16px 60px;
   }
-  .app{ max-width: 980px; margin: 0 auto; }
+  .app{ max-width: 1040px; margin: 0 auto; }
   h1{ font-family:'Anton', sans-serif; font-weight:400; font-size:26px; margin:0 0 4px; }
   .subtitle{ color: var(--muted); font-size: 13px; margin: 0 0 20px; }
   .panel{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
@@ -50,26 +50,43 @@
   .btn.danger{ background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
   .btn.small{ padding: 5px 10px; font-size: 11px; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.block{ width:100%; }
 
-  /* config gate */
   .config-note{ font-size:12px; color: var(--muted); line-height:1.6; margin-bottom:16px; }
   .config-note code{ background: var(--panel-2); padding:1px 5px; border-radius:2px; }
 
-  /* layout */
-  .layout{ display:grid; grid-template-columns: 260px 1fr; gap: 16px; align-items:start; }
+  .layout{ display:grid; grid-template-columns: 240px 1fr; gap: 16px; align-items:start; }
   @media (max-width: 760px){ .layout{ grid-template-columns: 1fr; } }
 
-  .team-list{ display:flex; flex-direction:column; gap:8px; }
-  .team-row{
+  .list-row{
     display:flex; align-items:center; gap:10px; padding: 10px 12px;
     border: 1px solid var(--line); border-radius: var(--radius-sm); cursor:pointer;
-    background: var(--panel);
+    background: var(--panel); margin-bottom:8px;
   }
-  .team-row.active{ border-color: var(--pitch); background: var(--pitch-light); }
-  .team-row img{ width:28px; height:30px; object-fit:contain; flex-shrink:0; }
-  .team-row .swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; }
-  .team-row-name{ font-weight:600; font-size:14px; flex:1; }
-  .team-row-count{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .list-row.active{ border-color: var(--pitch); background: var(--pitch-light); }
+  .list-row img{ width:26px; height:28px; object-fit:contain; flex-shrink:0; }
+  .list-row .swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .list-row-name{ font-weight:600; font-size:14px; flex:1; }
+  .list-row-count{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+
+  .breadcrumb{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--muted);
+    margin-bottom: 14px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  }
+  .breadcrumb a{ color: var(--pitch); cursor:pointer; text-decoration:none; }
+  .breadcrumb a:hover{ text-decoration:underline; }
+
+  .lineup-card{
+    display:flex; align-items:center; gap:12px; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom:8px; cursor:pointer;
+  }
+  .lineup-card:hover{ border-color: var(--pitch); }
+  .lineup-card-name{ font-weight:600; font-size:14px; flex:1; }
+  .lineup-card-meta{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .source-tag{
+    font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px;
+    padding: 2px 7px; border-radius:20px; background: var(--panel-2); color: var(--muted);
+  }
 
   table{ width:100%; border-collapse: collapse; font-size: 13px; }
   th{
@@ -96,18 +113,34 @@
   .conn-status{ font-family:'IBM Plex Mono',monospace; font-size:11px; color: var(--muted); }
   .conn-status b{ color: var(--pitch); }
 
-  dialog{
-    border:none; border-radius: var(--radius); padding:0; max-width: 420px; width: calc(100% - 32px);
-  }
+  dialog{ border:none; border-radius: var(--radius); padding:0; max-width: 460px; width: calc(100% - 32px); }
   dialog::backdrop{ background: rgba(20,24,20,0.5); }
-  .dialog-body{ padding: 20px; }
+  .dialog-body{ padding: 20px; max-height: 80vh; overflow-y:auto; }
   .dialog-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top: 16px; }
+
+  .method-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin: 14px 0; }
+  .method-card{
+    border: 2px solid var(--line); border-radius: var(--radius-sm); padding: 14px 12px;
+    text-align:center; cursor:pointer; font-size:13px;
+  }
+  .method-card.selected{ border-color: var(--pitch); background: var(--pitch-light); }
+  .method-card .icon{ font-size:20px; margin-bottom:6px; }
+  .method-card .desc{ font-size:11px; color: var(--muted); margin-top:4px; line-height:1.4; }
+
+  .api-results{ max-height: 220px; overflow-y:auto; border:1px solid var(--line); border-radius: var(--radius-sm); margin-top:10px; }
+  .api-result-row{
+    display:flex; align-items:center; gap:10px; padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--line);
+  }
+  .api-result-row:last-child{ border-bottom:none; }
+  .api-result-row:hover{ background: var(--panel-2); }
+  .api-result-row img{ width:24px; height:24px; object-fit:contain; }
+  .spinner-text{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); padding:10px 0; }
 </style>
 </head>
 <body>
 <div class="app">
   <h1>Admin de Times</h1>
-  <p class="subtitle">Gerencia os times e jogadores usados na Sequência do Clássico.</p>
+  <p class="subtitle">Gerencia times, escalações e jogadores usados na Sequência do Clássico.</p>
 
   <!-- CONFIG GATE -->
   <div class="panel" id="configPanel">
@@ -134,12 +167,12 @@
     <div class="layout">
       <div class="panel">
         <h2>Times</h2>
-        <div class="team-list" id="teamList"></div>
-        <button class="btn primary" style="width:100%;margin-top:12px;" onclick="openTeamDialog()">+ Novo time</button>
+        <div id="teamList"></div>
+        <button class="btn primary block" onclick="openTeamDialog()">+ Novo time</button>
       </div>
 
-      <div class="panel" id="playersPanel">
-        <div class="empty">Selecione um time pra ver os jogadores.</div>
+      <div class="panel" id="rightPanel">
+        <div class="empty">Selecione um time pra ver as escalações.</div>
       </div>
     </div>
   </div>
@@ -188,6 +221,45 @@
   </div>
 </dialog>
 
+<!-- LINEUP DIALOG (name + method: manual or API) -->
+<dialog id="lineupDialog">
+  <div class="dialog-body">
+    <h2>Nova escalação</h2>
+    <div class="field">
+      <label>Nome da escalação</label>
+      <input type="text" id="lineupName" placeholder='Ex: "Libertadores de 2017"'>
+    </div>
+
+    <div class="method-grid">
+      <div class="method-card" id="methodManual" onclick="chooseMethod('manual')">
+        <div class="icon">✍️</div>
+        <div>Cadastrar manualmente</div>
+        <div class="desc">Você adiciona cada jogador um a um.</div>
+      </div>
+      <div class="method-card" id="methodApi" onclick="chooseMethod('api')">
+        <div class="icon">🔌</div>
+        <div>Puxar via API</div>
+        <div class="desc">Busca o elenco <b>atual</b> do clube. Você ajusta os níveis depois.</div>
+      </div>
+    </div>
+
+    <!-- API sub-flow -->
+    <div id="apiFlow" style="display:none;">
+      <div class="field">
+        <label>Buscar clube (TheSportsDB)</label>
+        <input type="text" id="apiSearchTerm" placeholder="Ex: Gremio">
+      </div>
+      <button class="btn small" onclick="searchApiTeam()">Buscar</button>
+      <div id="apiResults"></div>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn" onclick="lineupDialog.close()">Cancelar</button>
+      <button class="btn primary" id="btnCreateManualLineup" style="display:none;" onclick="createManualLineup()">Criar e adicionar jogadores</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- PLAYER DIALOG -->
 <dialog id="playerDialog">
   <div class="dialog-body">
@@ -212,10 +284,6 @@
         <input type="number" id="playerRating" min="1" max="99" value="70">
       </div>
     </div>
-    <div class="field">
-      <label>Era / referência</label>
-      <input type="text" id="playerEra" placeholder="Ex: 1995">
-    </div>
     <div class="dialog-actions">
       <button class="btn" onclick="playerDialog.close()">Cancelar</button>
       <button class="btn danger" id="btnDeletePlayer" style="display:none;" onclick="deletePlayerConfirm()">Excluir</button>
@@ -229,8 +297,11 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 let supabase = null;
 let teams = [];
-let activeTeamId = null;
+let lineups = [];
 let players = [];
+let activeTeamId = null;
+let activeLineupId = null;
+let selectedMethod = null;
 
 const POS_LABEL = { GK:'Goleiro', DF:'Defensor', MF:'Meio-campo', FW:'Atacante' };
 const POS_ORDER = ['GK','DF','MF','FW'];
@@ -239,14 +310,13 @@ const POS_ORDER = ['GK','DF','MF','FW'];
 function loadConfig(){
   const url = localStorage.getItem('sdc_supabase_url');
   const key = localStorage.getItem('sdc_supabase_key');
-  if(url && key){
-    connect(url, key);
-  }
+  if(url && key) connect(url, key);
 }
 
 window.saveConfig = function(){
-  const url = document.getElementById('cfgUrl').value.trim();
+  let url = document.getElementById('cfgUrl').value.trim();
   const key = document.getElementById('cfgKey').value.trim();
+  url = url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
   if(!url || !key){ showToast('Preenche URL e chave.'); return; }
   localStorage.setItem('sdc_supabase_url', url);
   localStorage.setItem('sdc_supabase_key', key);
@@ -274,7 +344,6 @@ async function connect(url, key){
   }
 }
 
-/* ---------------- TOAST ---------------- */
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -288,12 +357,13 @@ async function loadTeams(){
   if(error){ showToast('Erro ao carregar times'); return; }
   teams = data || [];
   renderTeamList();
-  if(activeTeamId){
-    const stillExists = teams.find(t=>t.id===activeTeamId);
-    if(stillExists){ await loadPlayers(activeTeamId); return; }
+  if(activeTeamId && teams.find(t=>t.id===activeTeamId)){
+    await loadLineups(activeTeamId);
+  } else if(teams.length){
+    selectTeam(teams[0].id);
+  } else {
+    document.getElementById('rightPanel').innerHTML = '<div class="empty">Nenhum time cadastrado ainda.</div>';
   }
-  if(teams.length){ selectTeam(teams[0].id); }
-  else{ document.getElementById('playersPanel').innerHTML = '<div class="empty">Nenhum time cadastrado ainda.</div>'; }
 }
 
 function renderTeamList(){
@@ -302,27 +372,22 @@ function renderTeamList(){
   list.innerHTML = '';
   teams.forEach(t=>{
     const row = document.createElement('div');
-    row.className = 'team-row' + (t.id === activeTeamId ? ' active' : '');
+    row.className = 'list-row' + (t.id === activeTeamId ? ' active' : '');
     row.onclick = (e) => { if(!e.target.closest('.row-actions')) selectTeam(t.id); };
     row.innerHTML = `
       ${t.crest_url ? `<img src="${t.crest_url}" alt="">` : `<span class="swatch" style="background:${t.primary_color}"></span>`}
-      <span class="team-row-name">${t.name}</span>
-      <span class="team-row-count">${playerCountLabel(t.id)}</span>
+      <span class="list-row-name">${t.name}</span>
       <div class="row-actions"><button class="btn small" onclick="editTeam('${t.id}')">editar</button></div>
     `;
     list.appendChild(row);
   });
 }
 
-function playerCountLabel(teamId){
-  if(teamId !== activeTeamId) return '';
-  return players.length + ' jog.';
-}
-
 window.selectTeam = async function(id){
   activeTeamId = id;
+  activeLineupId = null;
   renderTeamList();
-  await loadPlayers(id);
+  await loadLineups(id);
 }
 
 window.openTeamDialog = function(){
@@ -364,13 +429,9 @@ window.saveTeam = async function(){
     record_unbeaten: parseInt(document.getElementById('teamRecordUnbeaten').value) || 0,
   };
   if(!payload.name){ showToast('Dá um nome pro time.'); return; }
-
   let error;
-  if(id){
-    ({ error } = await supabase.from('teams').update(payload).eq('id', id));
-  } else {
-    ({ error } = await supabase.from('teams').insert(payload));
-  }
+  if(id){ ({ error } = await supabase.from('teams').update(payload).eq('id', id)); }
+  else { ({ error } = await supabase.from('teams').insert(payload)); }
   if(error){ showToast('Erro ao salvar time'); return; }
   document.getElementById('teamDialog').close();
   showToast('Time salvo!');
@@ -380,7 +441,7 @@ window.saveTeam = async function(){
 window.deleteTeamConfirm = async function(){
   const id = document.getElementById('teamId').value;
   const t = teams.find(x=>x.id===id);
-  if(!confirm(`Excluir ${t.name}? Isso apaga também todos os jogadores dele.`)) return;
+  if(!confirm(`Excluir ${t.name}? Isso apaga também escalações e jogadores dele.`)) return;
   const { error } = await supabase.from('teams').delete().eq('id', id);
   if(error){ showToast('Erro ao excluir'); return; }
   document.getElementById('teamDialog').close();
@@ -389,23 +450,174 @@ window.deleteTeamConfirm = async function(){
   await loadTeams();
 }
 
-/* ---------------- PLAYERS ---------------- */
-async function loadPlayers(teamId){
-  const { data, error } = await supabase.from('players').select('*').eq('team_id', teamId).order('rating', { ascending:false });
-  if(error){ showToast('Erro ao carregar jogadores'); return; }
-  players = data || [];
-  renderTeamList();
-  renderPlayers();
+/* ---------------- LINEUPS ---------------- */
+async function loadLineups(teamId){
+  const { data, error } = await supabase.from('lineups').select('*, players(count)').eq('team_id', teamId).order('created_at');
+  if(error){ showToast('Erro ao carregar escalações'); return; }
+  lineups = data || [];
+  renderLineupsPanel();
 }
 
-function renderPlayers(){
-  const panel = document.getElementById('playersPanel');
+function renderLineupsPanel(){
   const team = teams.find(t=>t.id===activeTeamId);
+  const panel = document.getElementById('rightPanel');
   if(!team){ panel.innerHTML = '<div class="empty">Selecione um time.</div>'; return; }
+
+  let cards = '';
+  if(!lineups.length){
+    cards = '<div class="empty">Nenhuma escalação cadastrada ainda.</div>';
+  } else {
+    lineups.forEach(l=>{
+      const count = l.players?.[0]?.count ?? 0;
+      cards += `
+        <div class="lineup-card" onclick="openLineup('${l.id}')">
+          <div class="lineup-card-name">${l.name}</div>
+          <span class="source-tag">${l.source === 'api' ? 'via API' : 'manual'}</span>
+          <span class="lineup-card-meta">${count} jogador${count===1?'':'es'}</span>
+        </div>`;
+    });
+  }
+
+  panel.innerHTML = `
+    <h2>Escalações — ${team.name}</h2>
+    <div id="lineupsList">${cards}</div>
+    <button class="btn primary block" style="margin-top:10px;" onclick="openLineupDialog()">+ Nova escalação</button>
+  `;
+}
+
+window.openLineupDialog = function(){
+  document.getElementById('lineupName').value = '';
+  document.getElementById('apiSearchTerm').value = teams.find(t=>t.id===activeTeamId)?.name || '';
+  document.getElementById('apiResults').innerHTML = '';
+  document.getElementById('apiFlow').style.display = 'none';
+  document.getElementById('btnCreateManualLineup').style.display = 'none';
+  document.getElementById('methodManual').classList.remove('selected');
+  document.getElementById('methodApi').classList.remove('selected');
+  selectedMethod = null;
+  lineupDialog.showModal();
+}
+
+window.chooseMethod = function(method){
+  selectedMethod = method;
+  document.getElementById('methodManual').classList.toggle('selected', method==='manual');
+  document.getElementById('methodApi').classList.toggle('selected', method==='api');
+  document.getElementById('apiFlow').style.display = method === 'api' ? 'block' : 'none';
+  document.getElementById('btnCreateManualLineup').style.display = method === 'manual' ? 'inline-block' : 'none';
+}
+
+window.createManualLineup = async function(){
+  const name = document.getElementById('lineupName').value.trim();
+  if(!name){ showToast('Dá um nome pra escalação.'); return; }
+  const { data, error } = await supabase.from('lineups').insert({ team_id: activeTeamId, name, source:'manual' }).select().single();
+  if(error){ showToast('Erro ao criar escalação'); return; }
+  document.getElementById('lineupDialog').close();
+  showToast('Escalação criada!');
+  await loadLineups(activeTeamId);
+  await openLineup(data.id);
+}
+
+window.searchApiTeam = async function(){
+  const term = document.getElementById('apiSearchTerm').value.trim();
+  if(!term){ showToast('Digita o nome do clube.'); return; }
+  const resultsEl = document.getElementById('apiResults');
+  resultsEl.innerHTML = '<div class="spinner-text">Buscando…</div>';
+  try{
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=${encodeURIComponent(term)}`);
+    const data = await res.json();
+    const foundTeams = data.teams || [];
+    if(!foundTeams.length){
+      resultsEl.innerHTML = '<div class="spinner-text">Nenhum clube encontrado. Tenta outro nome (em inglês às vezes funciona melhor).</div>';
+      return;
+    }
+    resultsEl.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'api-results';
+    foundTeams.forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'api-result-row';
+      row.onclick = () => pullApiSquad(t);
+      row.innerHTML = `
+        ${t.strTeamBadge ? `<img src="${t.strTeamBadge}" alt="">` : ''}
+        <div>
+          <div style="font-weight:600;">${t.strTeam}</div>
+          <div class="lineup-card-meta">${t.strCountry || ''} ${t.strLeague ? '· '+t.strLeague : ''}</div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+    resultsEl.appendChild(list);
+  }catch(err){
+    resultsEl.innerHTML = '<div class="spinner-text">Erro ao buscar. Tenta de novo.</div>';
+  }
+}
+
+function mapApiPosition(str){
+  const s = (str || '').toLowerCase();
+  if(s.includes('keeper')) return 'GK';
+  if(s.includes('back') || s.includes('defen')) return 'DF';
+  if(s.includes('mid')) return 'MF';
+  return 'FW';
+}
+
+async function pullApiSquad(apiTeam){
+  const resultsEl = document.getElementById('apiResults');
+  resultsEl.innerHTML = '<div class="spinner-text">Puxando elenco de ' + apiTeam.strTeam + '…</div>';
+  const name = document.getElementById('lineupName').value.trim() || (apiTeam.strTeam + ' — elenco atual');
+
+  try{
+    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/lookup_all_players.php?id=${apiTeam.idTeam}`);
+    const data = await res.json();
+    const apiPlayers = (data.player || []).filter(p => p.strPosition && !/coach|manager/i.test(p.strPosition));
+
+    if(!apiPlayers.length){
+      resultsEl.innerHTML = '<div class="spinner-text">Essa API não retornou elenco pra esse clube. Tenta outro nome de busca ou cadastra manualmente.</div>';
+      return;
+    }
+
+    const { data: lineup, error: lineupErr } = await supabase.from('lineups')
+      .insert({ team_id: activeTeamId, name, source:'api' }).select().single();
+    if(lineupErr) throw lineupErr;
+
+    const rows = apiPlayers.slice(0, 30).map(p => ({
+      lineup_id: lineup.id,
+      name: p.strPlayer,
+      position: mapApiPosition(p.strPosition),
+      rating: 70,
+    }));
+    const { error: playersErr } = await supabase.from('players').insert(rows);
+    if(playersErr) throw playersErr;
+
+    document.getElementById('lineupDialog').close();
+    showToast(`${rows.length} jogadores importados! Ajusta os níveis quando quiser.`);
+    await loadLineups(activeTeamId);
+    await openLineup(lineup.id);
+  }catch(err){
+    resultsEl.innerHTML = '<div class="spinner-text">Erro ao importar: ' + (err.message || err) + '</div>';
+  }
+}
+
+/* ---------------- PLAYERS (within a lineup) ---------------- */
+window.openLineup = async function(id){
+  activeLineupId = id;
+  await loadPlayers(id);
+}
+
+async function loadPlayers(lineupId){
+  const { data, error } = await supabase.from('players').select('*').eq('lineup_id', lineupId).order('rating', { ascending:false });
+  if(error){ showToast('Erro ao carregar jogadores'); return; }
+  players = data || [];
+  renderPlayersPanel();
+}
+
+function renderPlayersPanel(){
+  const team = teams.find(t=>t.id===activeTeamId);
+  const lineup = lineups.find(l=>l.id===activeLineupId);
+  const panel = document.getElementById('rightPanel');
+  if(!lineup){ renderLineupsPanel(); return; }
 
   let rows = '';
   if(!players.length){
-    rows = `<tr><td colspan="4" class="empty">Nenhum jogador cadastrado pra ${team.name} ainda.</td></tr>`;
+    rows = `<tr><td colspan="4" class="empty">Nenhum jogador nessa escalação ainda.</td></tr>`;
   } else {
     POS_ORDER.forEach(pos=>{
       players.filter(p=>p.position===pos).forEach(p=>{
@@ -413,34 +625,38 @@ function renderPlayers(){
           <tr>
             <td><span class="pos-tag">${POS_LABEL[pos]}</span></td>
             <td>${p.name}</td>
-            <td>${p.era || '—'}</td>
             <td>${p.rating}</td>
-            <td class="row-actions">
-              <button class="btn small" onclick="editPlayer('${p.id}')">editar</button>
-            </td>
+            <td class="row-actions"><button class="btn small" onclick="editPlayer('${p.id}')">editar</button></td>
           </tr>`;
       });
     });
   }
 
   panel.innerHTML = `
-    <h2>Jogadores — ${team.name}</h2>
+    <div class="breadcrumb">
+      <a onclick="backToLineups()">${team.name} · Escalações</a> <span>/</span> <span>${lineup.name}</span>
+    </div>
+    <h2>${lineup.name}</h2>
     <table>
-      <thead><tr><th>Posição</th><th>Nome</th><th>Era</th><th>Nível</th><th></th></tr></thead>
+      <thead><tr><th>Posição</th><th>Nome</th><th>Nível</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <button class="btn primary" style="margin-top:14px;" onclick="openPlayerDialog()">+ Novo jogador</button>
   `;
 }
 
+window.backToLineups = function(){
+  activeLineupId = null;
+  renderLineupsPanel();
+}
+
 window.openPlayerDialog = function(){
-  if(!activeTeamId){ showToast('Selecione um time primeiro.'); return; }
+  if(!activeLineupId){ showToast('Selecione uma escalação primeiro.'); return; }
   document.getElementById('playerDialogTitle').textContent = 'Novo jogador';
   document.getElementById('playerId').value = '';
   document.getElementById('playerName').value = '';
   document.getElementById('playerPos').value = 'GK';
   document.getElementById('playerRating').value = 70;
-  document.getElementById('playerEra').value = '';
   document.getElementById('btnDeletePlayer').style.display = 'none';
   playerDialog.showModal();
 }
@@ -453,7 +669,6 @@ window.editPlayer = function(id){
   document.getElementById('playerName').value = p.name;
   document.getElementById('playerPos').value = p.position;
   document.getElementById('playerRating').value = p.rating;
-  document.getElementById('playerEra').value = p.era || '';
   document.getElementById('btnDeletePlayer').style.display = 'inline-block';
   playerDialog.showModal();
 }
@@ -462,24 +677,20 @@ window.savePlayer = async function(){
   const id = document.getElementById('playerId').value;
   const rating = parseInt(document.getElementById('playerRating').value);
   const payload = {
-    team_id: activeTeamId,
+    lineup_id: activeLineupId,
     name: document.getElementById('playerName').value.trim(),
     position: document.getElementById('playerPos').value,
     rating: isNaN(rating) ? 70 : Math.min(99, Math.max(1, rating)),
-    era: document.getElementById('playerEra').value.trim(),
   };
   if(!payload.name){ showToast('Dá um nome pro jogador.'); return; }
-
   let error;
-  if(id){
-    ({ error } = await supabase.from('players').update(payload).eq('id', id));
-  } else {
-    ({ error } = await supabase.from('players').insert(payload));
-  }
+  if(id){ ({ error } = await supabase.from('players').update(payload).eq('id', id)); }
+  else { ({ error } = await supabase.from('players').insert(payload)); }
   if(error){ showToast('Erro ao salvar jogador'); return; }
   document.getElementById('playerDialog').close();
   showToast('Jogador salvo!');
-  await loadPlayers(activeTeamId);
+  await loadPlayers(activeLineupId);
+  await loadLineups(activeTeamId);
 }
 
 window.deletePlayerConfirm = async function(){
@@ -489,11 +700,13 @@ window.deletePlayerConfirm = async function(){
   if(error){ showToast('Erro ao excluir'); return; }
   document.getElementById('playerDialog').close();
   showToast('Jogador excluído.');
-  await loadPlayers(activeTeamId);
+  await loadPlayers(activeLineupId);
+  await loadLineups(activeTeamId);
 }
 
 /* ---------------- INIT ---------------- */
 window.teamDialog = document.getElementById('teamDialog');
+window.lineupDialog = document.getElementById('lineupDialog');
 window.playerDialog = document.getElementById('playerDialog');
 loadConfig();
 </script>
