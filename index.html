@@ -810,9 +810,9 @@ async function loadGameData(){
   });
 
   // rival squads: each active lineup of a team is used as the opposing squad when playing the OTHER team
-  RIVAL_SQUADS.gremio = (lineupsData.filter(l => l.team_id === interTeam.id && l.players?.length >= 3))
+  RIVAL_SQUADS.gremio = (lineupsData.filter(l => l.team_id === gremioTeam.id && l.players?.length >= 3))
     .map(l => ({ era: l.name, players: l.players.map(p=>({ name:p.name, pos:p.position, rating:p.rating })) }));
-  RIVAL_SQUADS.inter = (lineupsData.filter(l => l.team_id === gremioTeam.id && l.players?.length >= 3))
+  RIVAL_SQUADS.inter = (lineupsData.filter(l => l.team_id === interTeam.id && l.players?.length >= 3))
     .map(l => ({ era: l.name, players: l.players.map(p=>({ name:p.name, pos:p.position, rating:p.rating })) }));
 
   // populate cover screen with live data
@@ -1004,7 +1004,10 @@ const TIER_LABELS = ["Fácil","Médio","Forte","Lendário"];
 function pickWeightedRival(options, progress){
   const sorted = [...options].sort((a,b)=> squadAvg(a.players) - squadAvg(b.players));
   const idealIndex = progress * (sorted.length - 1);
-  const weights = sorted.map((o,i)=> Math.max(0.08, 1 - Math.abs(i - idealIndex) / sorted.length));
+  const weights = sorted.map((o,i)=>{
+    const closeness = Math.max(0, 1 - Math.abs(i - idealIndex) / sorted.length);
+    return Math.max(0.03, closeness * closeness);
+  });
   const total = weights.reduce((a,b)=>a+b,0);
   let r = Math.random() * total;
   for(let i=0;i<sorted.length;i++){
