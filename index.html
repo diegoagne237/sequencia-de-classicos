@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sequência do Clássico — Protótipo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #f3f5f2;
+    --panel: #ffffff;
+    --panel-2: #eef1ec;
+    --line: #dde3dc;
+    --text: #1e231e;
+    --muted: #6d766c;
+
+    --pitch: #3f7d52;
+    --pitch-light: #e4f0e7;
+
+    --gremio: #1e4fa0;
+    --gremio-soft: rgba(30,79,160,0.07);
+    --gremio-tint: rgba(30,79,160,0.13);
+    --gremio-line: rgba(30,79,160,0.35);
+
+    --inter: #d6272c;
+    --inter-soft: rgba(214,39,44,0.07);
+    --inter-tint: rgba(214,39,44,0.13);
+    --inter-line: rgba(214,39,44,0.35);
+
+    --warn: #b07a1f;
+    --danger: #c14c48;
+
+    --team: var(--gremio);
+    --team-soft: var(--gremio-soft);
+    --team-line: var(--gremio-line);
+
+    --radius: 4px;
+    --radius-sm: 3px;
+  }
+  body[data-team="inter"]{
+    --team: var(--inter);
+    --team-soft: var(--inter-soft);
+    --team-line: var(--inter-line);
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oswald', sans-serif;
+    display:flex;
+    justify-content:center;
+    padding: 28px 16px 60px;
+  }
+
+  .app{ width:100%; max-width: 760px; }
+
+  a{ color: inherit; }
+
+  /* ---- scoreboard (only shown from draft screen onward) ---- */
+  .scoreboard{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .scoreboard.visible{ display:block; }
+  .sb-top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom: 10px;
+  }
+  .sb-top-right{ display:flex; align-items:center; gap:10px; }
+  .back-link{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    color: var(--muted); background: none; border: 1px solid var(--line);
+    border-radius: var(--radius-sm); padding: 4px 10px; cursor:pointer;
+  }
+  .back-link:hover{ color: var(--text); border-color: var(--muted); }
+  .sb-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sb-mode{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 1.5px;
+    padding: 3px 9px; border-radius: 20px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .sb-mode.hard{ color: var(--warn); border-color: var(--warn); }
+
+  .sb-main{
+    display:flex; align-items:flex-end; gap: 16px;
+  }
+  .sb-count{
+    font-family: 'Anton', sans-serif;
+    font-size: 56px; line-height: .85;
+    color: var(--team);
+    letter-spacing: 1px;
+  }
+  .sb-slash{ font-size: 34px; color: var(--line); font-family:'Anton',sans-serif; }
+  .sb-target{ font-family:'Anton', sans-serif; font-size: 34px; color: var(--muted); }
+  .sb-sub{ font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); margin-left: auto; text-align:right; }
+  .sb-sub b{ color: var(--text); }
+
+  .sb-ticks{ display:flex; gap:4px; margin-top:12px; }
+  .tick{
+    flex:1; height:6px; border-radius:1px; background: var(--panel-2);
+    border: 1px solid var(--line);
+  }
+  .tick.filled{ background: var(--team); border-color: var(--team); }
+  .tick.record{ box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--warn); }
+
+  /* ---- generic panel/card ---- */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  h1{
+    font-family:'Anton', sans-serif;
+    font-weight:400;
+    font-size: 30px;
+    letter-spacing: .5px;
+    margin: 0 0 8px;
+  }
+  h2{
+    font-family:'Oswald', sans-serif;
+    font-size: 15px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--muted); font-weight: 600; margin: 0 0 16px;
+  }
+  p.lede{ color: var(--muted); font-size: 14px; margin: 0 0 20px; line-height:1.55; }
+
+  /* screen visibility */
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+
+  /* ---- hero / intro (cover) ---- */
+  .hero{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px 24px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0 0 auto 0; height:4px;
+    background: repeating-linear-gradient(90deg, var(--pitch) 0 22px, var(--pitch-light) 22px 44px);
+    opacity:.7;
+  }
+  .hero-eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--pitch); margin-bottom: 8px;
+  }
+  .hero p{ color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
+
+  .records-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+  .record-group{
+    border: 1px solid var(--line);
+    border-radius: 0;
+    overflow: hidden;
+  }
+  .record-group-label{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; padding: 8px 12px; color: #fff;
+  }
+  .record-group.gremio .record-group-label{ background: var(--gremio); }
+  .record-group.inter .record-group-label{ background: var(--inter); }
+  .record-pill{
+    font-family:'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 9px 12px; display:flex; justify-content:space-between;
+    border-top: 1px solid var(--line); color: var(--text);
+  }
+  .record-group.gremio .record-pill{ background: var(--gremio-tint); }
+  .record-group.inter .record-pill{ background: var(--inter-tint); }
+  .record-pill b{ font-family:'Anton', sans-serif; font-weight:400; }
+
+  /* tutorial (native details/summary) */
+  .tutorial{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 18px;
+    overflow:hidden;
+  }
+  .tutorial summary{
+    cursor:pointer; padding: 16px 20px;
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:14px;
+    display:flex; align-items:center; justify-content:space-between;
+    list-style:none;
+    color: var(--text);
+  }
+  .tutorial summary::-webkit-details-marker{ display:none; }
+  .tutorial summary::after{
+    content:"+"; font-family:'Anton',sans-serif; font-size:18px; color: var(--pitch);
+  }
+  .tutorial[open] summary::after{ content:"–"; }
+  .tutorial summary .tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--pitch);
+    background: var(--pitch-light); padding: 2px 8px; border-radius: 20px; margin-right:8px;
+  }
+  .tutorial-body{ padding: 0 20px 18px; }
+  .tutorial-step{
+    display:flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--muted); line-height:1.5;
+  }
+  .tutorial-step:first-child{ border-top:none; }
+  .tutorial-step .num{
+    font-family:'Anton', sans-serif; font-size: 16px; color: var(--pitch); flex-shrink:0; width: 22px;
+  }
+  .tutorial-step b{ color: var(--text); }
+
+  /* ---- team select ---- */
+  .team-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .team-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .team-card.selected.gremio{ border-color: var(--gremio); background: var(--gremio-soft); }
+  .team-card.selected.inter{ border-color: var(--inter); background: var(--inter-soft); }
+
+  .crest-wrap{ width:52px; height:56px; margin: 0 auto 10px; }
+  .crest-wrap svg{ width:100%; height:100%; display:block; }
+
+  .team-name{ font-family:'Anton', sans-serif; font-size: 19px; letter-spacing:.5px; }
+  .team-record{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); margin-top:6px; }
+
+  .mode-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .mode-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 16px;
+    cursor:pointer;
+  }
+  .mode-card.selected{ border-color: var(--pitch); background: var(--pitch-light); }
+  .mode-title{ font-family:'Oswald',sans-serif; font-weight:600; font-size:15px; display:flex; align-items:center; gap:8px; }
+  .mode-title .tag{ font-family:'IBM Plex Mono',monospace; font-size:10px; padding:2px 6px; border-radius:20px; background:var(--panel-2); color:var(--muted); }
+  .mode-desc{ font-size: 13px; color: var(--muted); margin-top: 6px; line-height:1.4; }
+
+  .cta{
+    width:100%;
+    margin-top: 20px;
+    background: var(--team);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .cta:disabled{ opacity:.35; cursor:not-allowed; }
+  .cta.ghost{
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+  }
+  .cta.team-colored{ background: var(--team); }
+  .cta.small{ width:auto; padding: 8px 16px; font-size:12px; margin-top:0; }
+
+  /* ---- squad draft ---- */
+  .draft-layout{ display:grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items:start; }
+  @media (max-width: 640px){ .draft-layout{ grid-template-columns: 1fr; } }
+
+  .draft-progress{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+    letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .draft-progress b{ color: var(--team); }
+  .draft-pos-title{
+    font-family:'Anton', sans-serif; font-size: 24px; letter-spacing:.5px;
+    margin: 0 0 4px; color: var(--team); text-transform: none;
+  }
+  .draft-pos-sub{ font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+
+  .sorteio-track{ display:flex; gap:5px; margin-bottom: 16px; }
+  .sorteio-dot{
+    flex:1; height:5px; border-radius:1px; background: var(--panel-2); border:1px solid var(--line);
+  }
+  .sorteio-dot.done{ background: var(--team); border-color: var(--team); }
+  .sorteio-dot.now{ border-color: var(--team); }
+
+  .reroll-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 14px; padding: 8px 12px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  }
+  .reroll-row span{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .reroll-row span b{ color: var(--text); }
+
+  .candidate-list{ display:flex; flex-direction:column; gap:10px; }
+  .candidate-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display:flex; align-items:center; gap:14px;
+    cursor:pointer;
+    transition: border-color .12s, background .12s;
+  }
+  .candidate-card:hover{ border-color: var(--team); background: var(--team-soft); }
+  .cand-avatar{
+    width: 38px; height:38px; border-radius: 50%; flex-shrink:0;
+    background: var(--panel-2); border: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Anton', sans-serif; font-size:14px; color: var(--muted);
+  }
+  .cand-info{ flex:1; }
+  .cand-name{ font-family:'Oswald', sans-serif; font-weight:600; font-size:15px; }
+  .cand-era{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); margin-top:2px; }
+  .cand-rating{
+    font-family:'Anton', sans-serif; font-size: 18px; color: var(--muted); min-width:30px; text-align:right;
+  }
+
+  .draft-complete{ text-align:center; padding: 26px 10px; }
+  .draft-complete .big-check{
+    width:48px; height:48px; border-radius:50%; background: var(--team); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:22px; margin: 0 auto 12px;
+  }
+
+  .squad-panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 14px 4px;
+    position: sticky; top: 20px;
+  }
+  .squad-panel h3{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+  }
+  .squad-group{ margin-bottom: 10px; }
+  .squad-group-label{ font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--muted); margin-bottom:4px; letter-spacing:1px; }
+  .squad-slot{
+    display:flex; align-items:center; gap:8px;
+    padding: 6px 8px; border-radius: var(--radius-sm);
+    font-size: 13px; margin-bottom: 4px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+  }
+  .squad-slot.filled{ border-color: var(--team-line); }
+  .squad-slot .dot{ width:5px; height:5px; border-radius:50%; background: var(--line); flex-shrink:0; }
+  .squad-slot.filled .dot{ background: var(--team); }
+  .squad-slot .slot-name{ flex:1; color: var(--muted); }
+  .squad-slot.filled .slot-name{ color: var(--text); }
+  .squad-slot .slot-rating{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* ---- match sim ---- */
+  .vs-row{ display:flex; align-items:center; justify-content:center; gap:24px; margin: 6px 0 18px; }
+  .vs-team{ text-align:center; }
+  .vs-crest{ width:52px; height:56px; margin: 0 auto 8px; }
+  .vs-crest svg{ width:100%; height:100%; }
+  .vs-label{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .vs-x{ font-family:'Anton', sans-serif; font-size: 18px; color: var(--muted); }
+
+  .vs-era{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .clock-row{
+    display:flex; align-items:center; justify-content:center; gap: 22px;
+    margin: 4px 0 18px;
+  }
+  .clock-time{
+    font-family:'IBM Plex Mono', monospace; font-size: 14px;
+    color: var(--muted); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 20px; padding: 5px 14px; min-width: 48px; text-align:center;
+  }
+  .clock-time.running{ color: var(--team); border-color: var(--team); }
+  .clock-score{
+    font-family:'Anton', sans-serif; font-size: 36px; letter-spacing: 2px; color: var(--text);
+  }
+
+  .log{
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--muted);
+    height: 170px;
+    overflow-y: auto;
+    margin-bottom: 18px;
+  }
+  .log-line{ opacity:0; animation: fadeIn .25s ease forwards; }
+  @keyframes fadeIn{ from{ opacity:0; transform: translateY(3px);} to{opacity:1; transform:none;} }
+  .log-line .min{ color: var(--team); font-weight:600; margin-right:6px; }
+  .log-line .goal{ color: var(--text); }
+  .log-line .side-mine{ color: var(--team); font-weight:600; }
+  .log-line .side-rival{ color: var(--muted); font-weight:600; }
+
+  .result-banner{
+    text-align:center; padding: 14px; border-radius: var(--radius-sm); margin-bottom:18px;
+    font-family:'Anton', sans-serif; font-size: 22px; letter-spacing: .5px;
+    display:none; border: 1px solid transparent;
+  }
+  .result-banner.win{ background: var(--team-soft); color: var(--team); border-color: var(--team); display:block; }
+  .result-banner.draw{ background: #f5ecd9; color: var(--warn); border-color: var(--warn); display:block; }
+  .result-banner.loss{ background: var(--inter-soft); color: var(--danger); border-color: var(--danger); display:block; }
+
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .cta{ margin-top:0; }
+
+  .footer-note{ text-align:center; color: var(--muted); font-size: 12px; margin-top: 24px; font-family:'IBM Plex Mono', monospace; }
+
+  /* ---- dev preview row (prototype only) ---- */
+  .dev-row{
+    margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line);
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .dev-row span{ font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .dev-btn{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px;
+    background: var(--panel-2); border: 1px dashed var(--line); color: var(--muted);
+    border-radius: var(--radius-sm); padding: 4px 10px; cursor:pointer;
+  }
+  .dev-btn:hover{ color: var(--text); border-color: var(--muted); }
+
+  /* ---- end-of-run share modal ---- */
+  .modal-overlay{
+    display:none;
+    position: fixed; inset: 0; background: rgba(20,24,20,0.55);
+    align-items: center; justify-content: center; z-index: 100;
+    padding: 24px 16px;
+  }
+  .modal-overlay.visible{ display:flex; }
+  .modal-wrap{ display:flex; flex-direction:column; gap: 14px; align-items:center; }
+
+  .share-card{
+    width: 340px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px 24px 22px;
+    text-align:center;
+    position: relative;
+    overflow:hidden;
+  }
+  .share-card::before{
+    content:"";
+    position:absolute; inset:0 0 auto 0; height:5px;
+    background: var(--team);
+  }
+  .share-eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+  }
+  .share-crest{ width: 60px; height: 64px; margin: 0 auto 10px; }
+  .share-crest img{ width:100%; height:100%; object-fit:contain; }
+  .share-team{ font-family:'Anton', sans-serif; font-size: 22px; color: var(--team); }
+  .share-mode{
+    font-family:'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+    margin: 4px 0 18px;
+  }
+  .share-headline{
+    font-family:'Oswald', sans-serif; font-weight:600; font-size: 14px;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .share-headline.win{ color: var(--team); }
+  .share-headline.loss{ color: var(--danger); }
+
+  .share-number{
+    font-family:'Anton', sans-serif; font-size: 68px; line-height:1; color: var(--text);
+  }
+  .share-number-label{
+    font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); margin-bottom: 10px;
+  }
+  .share-record{
+    display:inline-block; font-family:'IBM Plex Mono', monospace; font-size: 11px;
+    padding: 4px 12px; border-radius: 20px; margin-bottom: 18px;
+  }
+  .share-record.beat{ background: var(--team-soft); color: var(--team); }
+  .share-record.short{ background: var(--panel-2); color: var(--muted); }
+
+  .share-meta{ border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 14px; }
+  .share-meta-row{
+    display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--muted); padding: 3px 0;
+  }
+  .share-meta-row b{ color: var(--text); }
+
+  .share-opponents{
+    font-family:'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted);
+    line-height: 1.7; text-align:left; border-top: 1px solid var(--line); padding-top: 10px;
+  }
+  .share-opponents .opp-title{ text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; color: var(--muted); }
+
+  .modal-actions{ display:flex; flex-direction:column; gap:8px; width: 340px; }
+  .modal-actions-row{ display:flex; gap:8px; }
+  .modal-actions-row .cta{ flex:1; }
+  .modal-actions .cta{ margin-top:0; }
+</style>
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<body data-team="gremio">
+<div class="app">
+
+  <div class="scoreboard" id="scoreboard">
+    <div class="sb-top">
+      <span class="sb-label" id="sbTeamLabel">—</span>
+      <div class="sb-top-right">
+        <span class="sb-mode" id="sbModeLabel">—</span>
+        <button class="back-link" onclick="confirmBackToCover()">← Capa</button>
+      </div>
+    </div>
+    <div class="sb-main">
+      <span class="sb-count" id="sbCount">0</span>
+      <span class="sb-slash">/</span>
+      <span class="sb-target" id="sbTarget">–</span>
+      <span class="sb-sub" id="sbSub"></span>
+    </div>
+    <div class="sb-ticks" id="sbTicks"></div>
+  </div>
+
+  <!-- SCREEN 1: cover / setup -->
+  <div class="screen active" id="screen-setup">
+
+    <div class="hero">
+      <div class="hero-eyebrow">Gre-Nal · Modo Carreira</div>
+      <h1>Supere o recorde do clássico</h1>
+      <p>No Gre-Nal, cada resultado vira história. Os dois lados guardam recordes de sequências de vitórias e de invencibilidade. Escolha um lado, monte sua escalação e tente ir além desses números.</p>
+      <div class="records-grid">
+        <div class="record-group gremio">
+          <div class="record-group-label">Grêmio</div>
+          <div class="record-pill">Vitórias seguidas <b>6</b></div>
+          <div class="record-pill">Invencibilidade <b>13</b></div>
+        </div>
+        <div class="record-group inter">
+          <div class="record-group-label">Inter</div>
+          <div class="record-pill">Vitórias seguidas <b>5</b></div>
+          <div class="record-pill">Invencibilidade <b>17</b></div>
+        </div>
+      </div>
+    </div>
+
+    <details class="tutorial">
+      <summary><span><span class="tag">?</span>Como funciona</span></summary>
+      <div class="tutorial-body">
+        <div class="tutorial-step"><span class="num">1</span><div><b>Escolha o time e o modo.</b> Normal busca a sequência de vitórias; Hard busca a invencibilidade (empates não quebram a sequência).</div></div>
+        <div class="tutorial-step"><span class="num">2</span><div><b>Monte sua escalação.</b> Pra cada posição, 3 craques de eras diferentes são sorteados — escolha um pra fechar aquele posto. Dá pra resortear algumas vezes se não gostar das opções.</div></div>
+        <div class="tutorial-step"><span class="num">3</span><div><b>Simule o Gre-Nal.</b> A partida roda minuto a minuto, com gols sorteados a partir da força dos dois times.</div></div>
+        <div class="tutorial-step"><span class="num">4</span><div><b>Continue vencendo.</b> Cada resultado bom estende sua sequência. Uma derrota (ou empate, no modo Normal) zera tudo — o objetivo é superar o recorde histórico.</div></div>
+      </div>
+    </details>
+
+    <div class="panel">
+      <h2>Passo 1 — Time</h2>
+      <div class="team-grid">
+        <div class="team-card gremio" data-team="gremio" onclick="selectTeam('gremio')">
+          <div class="crest-wrap" id="crestSelectGremio"></div>
+          <div class="team-name">Grêmio</div>
+          <div class="team-record">Recorde: 6 vitórias · 13 invicto</div>
+        </div>
+        <div class="team-card inter" data-team="inter" onclick="selectTeam('inter')">
+          <div class="crest-wrap" id="crestSelectInter"></div>
+          <div class="team-name">Inter</div>
+          <div class="team-record">Recorde: 5 vitórias · 17 invicto</div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:24px;">Passo 2 — Modo</h2>
+      <div class="mode-grid">
+        <div class="mode-card" data-mode="normal" onclick="selectMode('normal')">
+          <div class="mode-title">Normal <span class="tag" id="normalTag">meta 7</span></div>
+          <div class="mode-desc">Emplacar mais vitórias seguidas que o recorde histórico do clássico.</div>
+        </div>
+        <div class="mode-card" data-mode="hard" onclick="selectMode('hard')">
+          <div class="mode-title">Hard <span class="tag" id="hardTag">meta 14</span></div>
+          <div class="mode-desc">Empates não quebram a sequência — o objetivo é a invencibilidade.</div>
+        </div>
+      </div>
+
+      <button class="cta" id="btnToDraft" disabled onclick="goToDraft()">Montar escalação</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: draft (sorteio position by position) -->
+  <div class="screen" id="screen-draft">
+    <div class="draft-layout">
+      <div class="panel">
+        <div id="draftActive">
+          <div class="draft-progress">JOGADOR <b id="draftSlotNum">1</b> DE 11</div>
+          <h2 class="draft-pos-title" id="draftPosTitle">Goleiro</h2>
+          <p class="draft-pos-sub" id="draftPosSub">Sorteio entre craques de diferentes eras. Escolha um pra fechar a posição.</p>
+          <div class="sorteio-track" id="sorteioTrack"></div>
+          <div class="reroll-row">
+            <span>Resorteios restantes: <b id="rerollCount">3</b></span>
+            <button class="cta ghost small" id="btnReroll" onclick="rerollCandidates()">🔁 Sortear de novo</button>
+          </div>
+          <div class="candidate-list" id="candidateList"></div>
+        </div>
+        <div id="draftDone" style="display:none;">
+          <div class="draft-complete">
+            <div class="big-check">✓</div>
+            <h2 style="margin:0 0 6px;">Escalação fechada</h2>
+            <p class="lede" style="margin-bottom:0;">Seu elenco tá pronto!</p>
+          </div>
+          <button class="cta" onclick="goToMatch()">Começar</button>
+        </div>
+      </div>
+
+      <div class="squad-panel" id="squadPanel"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: match -->
+  <div class="screen" id="screen-match">
+    <div class="panel">
+      <h2>Jogo <span id="matchNumber">1</span> da sequência</h2>
+      <div class="vs-row">
+        <div class="vs-team">
+          <div class="vs-crest" id="vsCrestUser"></div>
+          <div class="vs-label" id="vsUserLabel">Seu time</div>
+        </div>
+        <div class="vs-x">×</div>
+        <div class="vs-team">
+          <div class="vs-crest" id="vsCrestRival"></div>
+          <div class="vs-era" id="vsEraRival"></div>
+        </div>
+      </div>
+
+      <div class="clock-row">
+        <div class="clock-time" id="clockTime">0'</div>
+        <div class="clock-score" id="clockScore">0 – 0</div>
+      </div>
+
+      <div class="result-banner" id="resultBanner"></div>
+      <div class="log" id="matchLog"></div>
+
+      <div class="btn-row">
+        <button class="cta" id="btnSimulate" onclick="startMatch()">Simular</button>
+        <button class="cta ghost" id="btnContinue" style="display:none;" onclick="nextMatch()">Próximo jogo →</button>
+      </div>
+
+      <div class="dev-row">
+        <span>🧪 Prévia (protótipo):</span>
+        <button class="dev-btn" onclick="previewEnd(true)">ver tela de vitória</button>
+        <button class="dev-btn" onclick="previewEnd(false)">ver tela de derrota</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">PROTÓTIPO DE LAYOUT · dados de elenco ainda parciais</div>
+</div>
+
+<!-- END OF RUN — share modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-wrap">
+    <div class="share-card" id="shareCard">
+      <div class="share-eyebrow">Sequência do Clássico</div>
+      <div class="share-crest" id="shareCrest"></div>
+      <div class="share-team" id="shareTeam">Grêmio</div>
+      <div class="share-mode" id="shareMode">Modo Normal</div>
+
+      <div class="share-headline" id="shareHeadline">Sequência encerrada</div>
+
+      <div class="share-number" id="shareNumber">0</div>
+      <div class="share-number-label" id="shareNumberLabel">vitórias seguidas</div>
+
+      <div class="share-record" id="shareRecordCompare"></div>
+
+      <div class="share-meta">
+        <div class="share-meta-row"><span>Jogos disputados</span><b id="shareGames">0</b></div>
+        <div class="share-meta-row"><span>Recorde histórico</span><b id="shareRecord">0</b></div>
+      </div>
+
+      <div class="share-opponents" id="shareOpponents"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="cta" id="btnSaveImage" onclick="saveShareImage()">📥 Salvar imagem</button>
+      <div class="modal-actions-row">
+        <button class="cta ghost" onclick="closeModal()">Fechar</button>
+        <button class="cta ghost" onclick="restart()">Jogar de novo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- CRESTS ---------------- */
+const CREST_URLS = {
+  gremio: 'https://logodetimes.com/wp-content/uploads/gremio.png',
+  inter: 'https://logodetimes.com/wp-content/uploads/internacional.png'
+};
+function crestImg(team){
+  return `<img src="${CREST_URLS[team]}" alt="Escudo ${POOLS[team] ? POOLS[team].name : team}" style="width:100%;height:100%;object-fit:contain;">`;
+}
+
+/* ---------------- DATA ---------------- */
+const POOLS = {
+  gremio: {
+    name: "Grêmio",
+    short: "GR",
+    recordWin: 6, targetWin: 7,
+    recordUnbeaten: 13, targetUnbeaten: 14,
+    players: [
+      {name:"Danrlei", pos:"GK", era:"1995", rating:82},
+      {name:"Eurico", pos:"GK", era:"1977", rating:74},
+      {name:"Adilson", pos:"DF", era:"1995 · cap.", rating:85},
+      {name:"Mauro Galvão", pos:"DF", era:"1995", rating:83},
+      {name:"Roger", pos:"DF", era:"1995", rating:80},
+      {name:"Rivarola", pos:"DF", era:"1995", rating:79},
+      {name:"Arce", pos:"DF", era:"1995", rating:78},
+      {name:"Victor Hugo", pos:"DF", era:"1977", rating:72},
+      {name:"Cassiá", pos:"DF", era:"1977", rating:71},
+      {name:"Corso", pos:"DF", era:"1977", rating:70},
+      {name:"Oberdan", pos:"DF", era:"1977", rating:70},
+      {name:"Dinho", pos:"MF", era:"1995", rating:84},
+      {name:"Emerson", pos:"MF", era:"1995", rating:83},
+      {name:"Carlos Miguel", pos:"MF", era:"1995", rating:82},
+      {name:"Arílson", pos:"MF", era:"1995", rating:81},
+      {name:"Luís Carlos Goiano", pos:"MF", era:"1995", rating:80},
+      {name:"Tarciso", pos:"MF", era:"1977", rating:72},
+      {name:"Ladinho", pos:"MF", era:"1977", rating:71},
+      {name:"Tadeu", pos:"MF", era:"1977", rating:70},
+      {name:"Jardel", pos:"FW", era:"1995", rating:93},
+      {name:"Paulo Nunes", pos:"FW", era:"1995", rating:88},
+      {name:"André Catimba", pos:"FW", era:"1977", rating:76},
+      {name:"Alcindo", pos:"FW", era:"1977", rating:75},
+      {name:"Éder", pos:"FW", era:"1977", rating:74},
+      {name:"Iura", pos:"FW", era:"1977", rating:73},
+      {name:"Vilson", pos:"FW", era:"1977", rating:68},
+      {name:"Marcelo Grohe", pos:"GK", era:"2017", rating:84},
+      {name:"Edílson", pos:"DF", era:"2017", rating:79},
+      {name:"Geromel", pos:"DF", era:"2017", rating:88},
+      {name:"Kannemann", pos:"DF", era:"2017", rating:87},
+      {name:"Cortez", pos:"DF", era:"2017", rating:80},
+      {name:"Michel", pos:"MF", era:"2017", rating:82},
+      {name:"Ramiro", pos:"MF", era:"2017", rating:83},
+      {name:"Maicon", pos:"MF", era:"2017", rating:78},
+      {name:"Douglas", pos:"MF", era:"2017", rating:81},
+      {name:"Luan", pos:"FW", era:"2017", rating:89},
+      {name:"Everton", pos:"FW", era:"2017", rating:90},
+      {name:"Márcio", pos:"GK", era:"2004", rating:62},
+      {name:"George", pos:"DF", era:"2004", rating:60},
+      {name:"Alex Xavier", pos:"DF", era:"2004", rating:61},
+      {name:"Baloy", pos:"DF", era:"2004", rating:63},
+      {name:"Cristiano", pos:"DF", era:"2004", rating:60},
+      {name:"Cocito", pos:"MF", era:"2004", rating:62},
+      {name:"Leanderson", pos:"MF", era:"2004", rating:65},
+      {name:"Felipe Melo", pos:"MF", era:"2004", rating:70},
+      {name:"Anderson (2004)", pos:"MF", era:"2004", rating:61},
+      {name:"Marcelinho", pos:"FW", era:"2004", rating:66},
+      {name:"Cláudio Pitbull", pos:"FW", era:"2004", rating:63},
+    ]
+  },
+  inter: {
+    name: "Inter",
+    short: "IN",
+    recordWin: 5, targetWin: 6,
+    recordUnbeaten: 17, targetUnbeaten: 18,
+    players: [
+      {name:"Abbondanzieri", pos:"GK", era:"2010", rating:86},
+      {name:"Clemer", pos:"GK", era:"2006", rating:80},
+      {name:"Índio", pos:"DF", era:"2006", rating:82},
+      {name:"Bolívar", pos:"DF", era:"2010", rating:81},
+      {name:"Fabiano Eller", pos:"DF", era:"2006", rating:79},
+      {name:"Sorondo", pos:"DF", era:"2010", rating:78},
+      {name:"Ceará", pos:"DF", era:"2006", rating:78},
+      {name:"Kleber", pos:"DF", era:"2010", rating:77},
+      {name:"Nei", pos:"DF", era:"2010", rating:76},
+      {name:"Rubens Cardoso", pos:"DF", era:"2006", rating:75},
+      {name:"D'Alessandro", pos:"MF", era:"2010", rating:92},
+      {name:"Alex", pos:"MF", era:"2006", rating:84},
+      {name:"Guiñazú", pos:"MF", era:"2010", rating:82},
+      {name:"Andrezinho", pos:"MF", era:"2010", rating:80},
+      {name:"Edinho", pos:"MF", era:"2006", rating:80},
+      {name:"Sandro", pos:"MF", era:"2010", rating:79},
+      {name:"Vargas", pos:"MF", era:"2006", rating:77},
+      {name:"Wellington Monteiro", pos:"MF", era:"2006", rating:76},
+      {name:"Alexandre Pato", pos:"FW", era:"2006", rating:85},
+      {name:"Fernandão", pos:"FW", era:"2006", rating:83},
+      {name:"Alecsandro", pos:"FW", era:"2010", rating:82},
+      {name:"Iarley", pos:"FW", era:"2006", rating:81},
+      {name:"Walter", pos:"FW", era:"2010", rating:79},
+      {name:"Luiz Adriano", pos:"FW", era:"2006", rating:80},
+      {name:"Adriano Gabiru", pos:"FW", era:"2006", rating:78},
+      {name:"Danilo Fernandes", pos:"GK", era:"2016", rating:68},
+      {name:"William", pos:"DF", era:"2016", rating:62},
+      {name:"Paulão", pos:"DF", era:"2016", rating:65},
+      {name:"Ernando", pos:"DF", era:"2016", rating:64},
+      {name:"Fabinho", pos:"DF", era:"2016", rating:63},
+      {name:"Anderson", pos:"MF", era:"2016", rating:66},
+      {name:"Valdivia", pos:"MF", era:"2016", rating:64},
+      {name:"Artur", pos:"MF", era:"2016", rating:60},
+      {name:"Luis Seijas", pos:"MF", era:"2016", rating:61},
+      {name:"Vitinho", pos:"FW", era:"2016", rating:70},
+      {name:"Aylon", pos:"FW", era:"2016", rating:63},
+    ]
+  }
+};
+
+const SLOTS = { GK:1, DF:4, MF:4, FW:2 };
+const POS_LABEL = { GK:"Goleiro", DF:"Defensores", MF:"Meio-campo", FW:"Atacantes" };
+
+// Real historic starting XIs, used as the "rival" side each match (era shown to the player)
+const RIVAL_SQUADS = {
+  gremio: [
+    {
+      era: "Grêmio 2004 — Ano do rebaixamento",
+      players: [
+        {name:"Márcio", pos:"GK", rating:62},
+        {name:"George", pos:"DF", rating:60},
+        {name:"Alex Xavier", pos:"DF", rating:61},
+        {name:"Baloy", pos:"DF", rating:63},
+        {name:"Cristiano", pos:"DF", rating:60},
+        {name:"Cocito", pos:"MF", rating:62},
+        {name:"Leanderson", pos:"MF", rating:65},
+        {name:"Felipe Melo", pos:"MF", rating:70},
+        {name:"Anderson", pos:"MF", rating:61},
+        {name:"Marcelinho", pos:"FW", rating:66},
+        {name:"Cláudio Pitbull", pos:"FW", rating:63},
+      ]
+    },
+    {
+      era: "Grêmio 1977 — Campeão Gaúcho",
+      players: [
+        {name:"Eurico", pos:"GK", rating:74},
+        {name:"Victor Hugo", pos:"DF", rating:72},
+        {name:"Corso", pos:"DF", rating:70},
+        {name:"Cassiá", pos:"DF", rating:71},
+        {name:"Oberdan", pos:"DF", rating:70},
+        {name:"Ladinho", pos:"MF", rating:71},
+        {name:"Tarciso", pos:"MF", rating:72},
+        {name:"Tadeu", pos:"MF", rating:70},
+        {name:"André Catimba", pos:"FW", rating:76},
+        {name:"Iura", pos:"FW", rating:73},
+        {name:"Éder", pos:"FW", rating:74},
+      ]
+    },
+    {
+      era: "Grêmio 1995 — Bicampeão da Libertadores",
+      players: [
+        {name:"Danrlei", pos:"GK", rating:82},
+        {name:"Arce", pos:"DF", rating:78},
+        {name:"Rivarola", pos:"DF", rating:79},
+        {name:"Adilson", pos:"DF", rating:85},
+        {name:"Roger", pos:"DF", rating:80},
+        {name:"Dinho", pos:"MF", rating:84},
+        {name:"Luís Carlos Goiano", pos:"MF", rating:80},
+        {name:"Arílson", pos:"MF", rating:81},
+        {name:"Carlos Miguel", pos:"MF", rating:82},
+        {name:"Paulo Nunes", pos:"FW", rating:88},
+        {name:"Jardel", pos:"FW", rating:93},
+      ]
+    },
+    {
+      era: "Grêmio 2017 — Campeão da Libertadores",
+      players: [
+        {name:"Marcelo Grohe", pos:"GK", rating:84},
+        {name:"Edílson", pos:"DF", rating:79},
+        {name:"Geromel", pos:"DF", rating:88},
+        {name:"Kannemann", pos:"DF", rating:87},
+        {name:"Cortez", pos:"DF", rating:80},
+        {name:"Michel", pos:"MF", rating:82},
+        {name:"Ramiro", pos:"MF", rating:83},
+        {name:"Maicon", pos:"MF", rating:78},
+        {name:"Douglas", pos:"MF", rating:81},
+        {name:"Luan", pos:"FW", rating:89},
+        {name:"Everton", pos:"FW", rating:90},
+      ]
+    }
+  ],
+  inter: [
+    {
+      era: "Inter 2016 — Ano do rebaixamento",
+      players: [
+        {name:"Danilo Fernandes", pos:"GK", rating:68},
+        {name:"William", pos:"DF", rating:62},
+        {name:"Paulão", pos:"DF", rating:65},
+        {name:"Ernando", pos:"DF", rating:64},
+        {name:"Fabinho", pos:"DF", rating:63},
+        {name:"Anderson", pos:"MF", rating:66},
+        {name:"Valdivia", pos:"MF", rating:64},
+        {name:"Artur", pos:"MF", rating:60},
+        {name:"Luis Seijas", pos:"MF", rating:61},
+        {name:"Vitinho", pos:"FW", rating:70},
+        {name:"Aylon", pos:"FW", rating:63},
+      ]
+    },
+    {
+      era: "Inter 2006 — Campeão Mundial FIFA",
+      players: [
+        {name:"Clemer", pos:"GK", rating:80},
+        {name:"Ceará", pos:"DF", rating:78},
+        {name:"Índio", pos:"DF", rating:82},
+        {name:"Fabiano Eller", pos:"DF", rating:79},
+        {name:"Rubens Cardoso", pos:"DF", rating:75},
+        {name:"Edinho", pos:"MF", rating:80},
+        {name:"Wellington Monteiro", pos:"MF", rating:76},
+        {name:"Alex", pos:"MF", rating:84},
+        {name:"Fernandão", pos:"FW", rating:83},
+        {name:"Alexandre Pato", pos:"FW", rating:85},
+        {name:"Iarley", pos:"FW", rating:81},
+      ]
+    },
+    {
+      era: "Inter 2010 — Bicampeão da Libertadores",
+      players: [
+        {name:"Abbondanzieri", pos:"GK", rating:86},
+        {name:"Nei", pos:"DF", rating:76},
+        {name:"Bolívar", pos:"DF", rating:81},
+        {name:"Sorondo", pos:"DF", rating:78},
+        {name:"Kleber", pos:"DF", rating:77},
+        {name:"Sandro", pos:"MF", rating:79},
+        {name:"Guiñazú", pos:"MF", rating:82},
+        {name:"Andrezinho", pos:"MF", rating:80},
+        {name:"D'Alessandro", pos:"MF", rating:92},
+        {name:"Alecsandro", pos:"FW", rating:82},
+        {name:"Walter", pos:"FW", rating:79},
+      ]
+    }
+  ]
+};
+
+let state = {
+  team: null,
+  mode: null,
+  selected: {},
+  draftSlots: [],
+  currentSlotIndex: 0,
+  currentCandidates: [],
+  rerollsLeft: 3,
+  streak: 0,
+  matchNum: 1,
+  rivalSquad: null,
+  rivalTier: '',
+  history: [],
+  matchInterval: null,
+  matchRunning: false,
+  minute: 0,
+  score: { mine:0, rival:0 },
+};
+
+/* ---------------- INIT ---------------- */
+document.getElementById('crestSelectGremio').innerHTML = crestImg('gremio');
+document.getElementById('crestSelectInter').innerHTML = crestImg('inter');
+
+/* ---------------- SETUP SCREEN ---------------- */
+function selectTeam(team){
+  state.team = team;
+  document.body.setAttribute('data-team', team);
+  document.querySelectorAll('.team-card').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.team === team);
+  });
+  const pool = POOLS[team];
+  document.getElementById('normalTag').textContent = `meta ${pool.targetWin}`;
+  document.getElementById('hardTag').textContent = `meta ${pool.targetUnbeaten}`;
+  updateSetupCta();
+}
+
+function selectMode(mode){
+  state.mode = mode;
+  document.querySelectorAll('.mode-card').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.mode === mode);
+  });
+  updateSetupCta();
+}
+
+function updateSetupCta(){
+  document.getElementById('btnToDraft').disabled = !(state.team && state.mode);
+}
+
+const POS_TITLE_SINGULAR = { GK:"Goleiro", DF:"Zagueiro", MF:"Meio-campista", FW:"Atacante" };
+
+function buildSlotOrder(){
+  const order = [];
+  ['GK','DF','MF','FW'].forEach(pos=>{
+    for(let i=0;i<SLOTS[pos];i++) order.push({ pos, player:null });
+  });
+  return order;
+}
+
+function goToDraft(){
+  state.selected = {};
+  state.draftSlots = buildSlotOrder();
+  state.currentSlotIndex = 0;
+  state.rerollsLeft = state.mode === 'hard' ? 5 : 3;
+  document.getElementById('draftActive').style.display = 'block';
+  document.getElementById('draftDone').style.display = 'none';
+  switchScreen('screen-draft');
+  renderSquadPanel();
+  drawCandidates();
+  updateRerollUI();
+  updateScoreboard();
+}
+
+/* ---------------- DRAFT SCREEN: sorteio ---------------- */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function drawCandidates(excludeCurrent){
+  const idx = state.currentSlotIndex;
+  const slot = state.draftSlots[idx];
+  const pool = POOLS[state.team];
+  const pickedNames = state.draftSlots.filter(s=>s.player).map(s=>s.player.name);
+  let excludeNames = pickedNames;
+  if(excludeCurrent && state.currentCandidates){
+    const currentNames = state.currentCandidates.map(c=>c.name);
+    const wouldRemain = pool.players.filter(p => p.pos === slot.pos && !pickedNames.includes(p.name) && !currentNames.includes(p.name));
+    if(wouldRemain.length >= Math.min(3, pool.players.filter(p=>p.pos===slot.pos && !pickedNames.includes(p.name)).length)){
+      excludeNames = pickedNames.concat(currentNames);
+    }
+  }
+  const available = pool.players.filter(p => p.pos === slot.pos && !excludeNames.includes(p.name));
+  const n = Math.min(3, available.length);
+  state.currentCandidates = shuffle(available).slice(0, n);
+  renderDraftActive();
+}
+
+function rerollCandidates(){
+  if(state.rerollsLeft <= 0) return;
+  state.rerollsLeft--;
+  drawCandidates(true);
+  updateRerollUI();
+}
+
+function updateRerollUI(){
+  document.getElementById('rerollCount').textContent = state.rerollsLeft;
+  document.getElementById('btnReroll').disabled = state.rerollsLeft <= 0;
+}
+
+function renderDraftActive(){
+  const idx = state.currentSlotIndex;
+  const slot = state.draftSlots[idx];
+
+  document.getElementById('draftSlotNum').textContent = idx + 1;
+  document.getElementById('draftPosTitle').textContent = POS_TITLE_SINGULAR[slot.pos];
+  document.getElementById('draftPosSub').textContent = 'Sorteio entre craques de diferentes eras. Escolha um pra fechar a posição.';
+
+  const track = document.getElementById('sorteioTrack');
+  track.innerHTML = '';
+  state.draftSlots.forEach((s,i)=>{
+    const d = document.createElement('div');
+    d.className = 'sorteio-dot' + (s.player ? ' done' : '') + (i===idx ? ' now' : '');
+    track.appendChild(d);
+  });
+
+  const list = document.getElementById('candidateList');
+  list.innerHTML = '';
+  state.currentCandidates.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 'candidate-card';
+    card.onclick = () => pickCandidate(p);
+    card.innerHTML = `
+      <div class="cand-avatar">${p.pos}</div>
+      <div class="cand-info">
+        <div class="cand-name">${p.name}</div>
+        <div class="cand-era">${p.era}</div>
+      </div>
+      <div class="cand-rating">${p.rating}</div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function pickCandidate(p){
+  state.draftSlots[state.currentSlotIndex].player = p;
+  state.selected[p.name] = p;
+  renderSquadPanel();
+
+  if(state.currentSlotIndex < state.draftSlots.length - 1){
+    state.currentSlotIndex++;
+    drawCandidates();
+  } else {
+    document.getElementById('draftActive').style.display = 'none';
+    document.getElementById('draftDone').style.display = 'block';
+  }
+}
+
+function renderSquadPanel(){
+  const panel = document.getElementById('squadPanel');
+  panel.innerHTML = '<h3>Sua escalação</h3>';
+  ['GK','DF','MF','FW'].forEach(pos=>{
+    const group = document.createElement('div');
+    group.className = 'squad-group';
+    group.innerHTML = `<div class="squad-group-label">${POS_LABEL[pos]}</div>`;
+    state.draftSlots.filter(s=>s.pos===pos).forEach(s=>{
+      const row = document.createElement('div');
+      row.className = 'squad-slot' + (s.player ? ' filled' : '');
+      row.innerHTML = `<span class="dot"></span><span class="slot-name">${s.player ? s.player.name : '—'}</span>${s.player ? `<span class="slot-rating">${s.player.rating}</span>` : ''}`;
+      group.appendChild(row);
+    });
+    panel.appendChild(group);
+  });
+}
+
+/* ---------------- MATCH SCREEN ---------------- */
+function squadAvg(players){
+  return players.reduce((a,p)=>a+p.rating,0) / players.length;
+}
+
+const TIER_LABELS = ["Fácil","Médio","Forte","Lendário"];
+
+function pickWeightedRival(options, progress){
+  const sorted = [...options].sort((a,b)=> squadAvg(a.players) - squadAvg(b.players));
+  const idealIndex = progress * (sorted.length - 1);
+  const weights = sorted.map((o,i)=> Math.max(0.08, 1 - Math.abs(i - idealIndex) / sorted.length));
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random() * total;
+  for(let i=0;i<sorted.length;i++){
+    r -= weights[i];
+    if(r <= 0) return { squad: sorted[i], tierIndex: i, tierCount: sorted.length };
+  }
+  return { squad: sorted[sorted.length-1], tierIndex: sorted.length-1, tierCount: sorted.length };
+}
+
+function tierLabel(tierIndex, tierCount){
+  const idx = Math.round((tierIndex / (tierCount - 1)) * (TIER_LABELS.length - 1));
+  return TIER_LABELS[idx];
+}
+
+function goToMatch(){
+  switchScreen('screen-match');
+  drawNewRival();
+  resetMatchScreen();
+}
+
+function drawNewRival(){
+  const rivalKey = state.team === 'gremio' ? 'inter' : 'gremio';
+  const options = RIVAL_SQUADS[rivalKey];
+  const pool = POOLS[state.team];
+  const target = state.mode === 'normal' ? pool.targetWin : pool.targetUnbeaten;
+  const progress = Math.min(1, state.streak / target);
+
+  const pick = pickWeightedRival(options, progress);
+  state.rivalSquad = { key: rivalKey, ...pick.squad };
+  state.rivalTier = tierLabel(pick.tierIndex, pick.tierCount);
+
+  document.getElementById('vsCrestUser').innerHTML = crestImg(state.team);
+  document.getElementById('vsUserLabel').textContent = `Teu ${pool.name}`;
+
+  document.getElementById('vsCrestRival').innerHTML = crestImg(rivalKey);
+  document.getElementById('vsEraRival').innerHTML = state.rivalSquad.era;
+}
+
+function resetMatchScreen(){
+  clearInterval(state.matchInterval);
+  state.matchRunning = false;
+  state.minute = 0;
+  state.score = { mine: 0, rival: 0 };
+
+  document.getElementById('matchNumber').textContent = state.matchNum;
+  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('resultBanner').textContent = '';
+  document.getElementById('clockTime').textContent = "0'";
+  document.getElementById('clockTime').classList.remove('running');
+  document.getElementById('clockScore').textContent = '0 – 0';
+  document.getElementById('matchLog').innerHTML = '<div class="log-line" style="opacity:1;">Escalação pronta. Aperte "Simular" pra rodar a partida.</div>';
+  document.getElementById('btnSimulate').style.display = 'block';
+  document.getElementById('btnSimulate').disabled = false;
+  document.getElementById('btnSimulate').textContent = 'Simular';
+  document.getElementById('btnContinue').style.display = 'none';
+}
+
+function teamStrength(){
+  const vals = Object.values(state.selected).map(p=>p.rating);
+  return vals.reduce((a,b)=>a+b,0) / vals.length;
+}
+
+function rivalStrength(){
+  const vals = state.rivalSquad.players.map(p=>p.rating);
+  return vals.reduce((a,b)=>a+b,0) / vals.length;
+}
+
+const SCORER_WEIGHT = { FW: 5, MF: 2, DF: 1, GK: 0 };
+
+function chooseScorer(squadPlayers){
+  const weighted = [];
+  squadPlayers.forEach(p=>{
+    const w = SCORER_WEIGHT[p.pos] || 0;
+    for(let i=0;i<w;i++) weighted.push(p);
+  });
+  return weighted[Math.floor(Math.random()*weighted.length)];
+}
+
+function appendLog(html){
+  const log = document.getElementById('matchLog');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = html;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function startMatch(){
+  const myStrength = teamStrength();
+  const rivStrength = rivalStrength();
+
+  const totalExpected = 2.4 * (0.75 + Math.random()*0.6);
+  const myShare = myStrength / (myStrength + rivStrength);
+  const expMine = totalExpected * myShare;
+  const expRival = totalExpected * (1 - myShare);
+  const probMine = expMine / 90;
+  const probRival = expRival / 90;
+
+  const mySquad = Object.values(state.selected);
+  const rivalSquad = state.rivalSquad.players;
+
+  document.getElementById('btnSimulate').disabled = true;
+  document.getElementById('btnSimulate').textContent = 'Simulando…';
+  document.getElementById('clockTime').classList.add('running');
+  document.getElementById('matchLog').innerHTML = '';
+  appendLog(`<span class="min">0'</span> Bola rolando no clássico.`);
+
+  state.minute = 0;
+  state.score = { mine: 0, rival: 0 };
+  state.matchRunning = true;
+
+  state.matchInterval = setInterval(()=>{
+    state.minute++;
+    document.getElementById('clockTime').textContent = state.minute + "'";
+
+    if(Math.random() < probMine){
+      const scorer = chooseScorer(mySquad);
+      state.score.mine++;
+      appendLog(`<span class="min">${state.minute}'</span> ⚽ <span class="side-mine">${scorer.name}</span> <span class="goal">balança a rede pro seu time!</span>`);
+    }
+    if(Math.random() < probRival){
+      const scorer = chooseScorer(rivalSquad);
+      state.score.rival++;
+      appendLog(`<span class="min">${state.minute}'</span> ⚽ <span class="side-rival">${scorer.name}</span> <span class="goal">marca pro rival.</span>`);
+    }
+    document.getElementById('clockScore').textContent = `${state.score.mine} – ${state.score.rival}`;
+
+    if(state.minute === 45){
+      appendLog(`<span class="min">45'</span> Fim do primeiro tempo.`);
+    }
+    if(state.minute >= 90){
+      clearInterval(state.matchInterval);
+      state.matchRunning = false;
+      document.getElementById('clockTime').classList.remove('running');
+      appendLog(`<span class="min">90'</span> Fim de jogo.`);
+      finalizeMatch();
+    }
+  }, 130);
+}
+
+function finalizeMatch(){
+  const { mine, rival } = state.score;
+  let result = mine > rival ? 'win' : (mine === rival ? 'draw' : 'loss');
+
+  const banner = document.getElementById('resultBanner');
+  const pool = POOLS[state.team];
+
+  if(result === 'win'){
+    banner.className = 'result-banner win';
+    banner.textContent = `VITÓRIA ${mine} × ${rival}`;
+    state.streak++;
+  } else if(result === 'draw'){
+    banner.className = 'result-banner draw';
+    banner.textContent = `EMPATE ${mine} × ${rival}`;
+    if(state.mode === 'hard') state.streak++; else state.streak = 0;
+  } else {
+    banner.className = 'result-banner loss';
+    banner.textContent = `DERROTA ${mine} × ${rival}`;
+    state.streak = 0;
+  }
+
+  state.history.push({ era: state.rivalSquad.era, result, score: `${mine}-${rival}` });
+
+  document.getElementById('btnSimulate').style.display = 'none';
+  document.getElementById('btnContinue').style.display = 'block';
+
+  updateScoreboard();
+
+  const target = state.mode === 'normal' ? pool.targetWin : pool.targetUnbeaten;
+  if(state.streak >= target){
+    document.getElementById('btnContinue').textContent = '🏆 Ver resultado final';
+    document.getElementById('btnContinue').onclick = () => openEndModal(true);
+  } else if(result === 'loss' || (result==='draw' && state.mode==='normal')){
+    document.getElementById('btnContinue').textContent = 'Ver resumo da tentativa';
+    document.getElementById('btnContinue').onclick = () => openEndModal(false);
+  } else {
+    document.getElementById('btnContinue').textContent = 'Próximo jogo →';
+    document.getElementById('btnContinue').onclick = nextMatch;
+  }
+}
+
+function nextMatch(){
+  state.matchNum++;
+  drawNewRival();
+  resetMatchScreen();
+}
+
+function restart(){
+  clearInterval(state.matchInterval);
+  state.streak = 0;
+  state.matchNum = 1;
+  state.selected = {};
+  state.history = [];
+  closeModal();
+  switchScreen('screen-setup');
+}
+
+function confirmBackToCover(){
+  if(confirm('Voltar pra capa? Sua sequência e escalação atuais serão perdidas.')){
+    restart();
+  }
+}
+
+/* ---------------- END-OF-RUN SHARE MODAL ---------------- */
+function openEndModal(isWin, overrides){
+  const pool = POOLS[state.team];
+  const target = state.mode === 'normal' ? pool.targetWin : pool.targetUnbeaten;
+  const record = state.mode === 'normal' ? pool.recordWin : pool.recordUnbeaten;
+  const streak = overrides && overrides.streak !== undefined ? overrides.streak : state.streak;
+  const games = overrides && overrides.games !== undefined ? overrides.games : state.matchNum;
+  const history = overrides && overrides.history ? overrides.history : state.history;
+  const numberLabel = state.mode === 'normal' ? 'vitórias seguidas' : 'jogos invicto';
+
+  document.getElementById('shareCrest').innerHTML = crestImg(state.team);
+  document.getElementById('shareTeam').textContent = pool.name;
+  document.getElementById('shareMode').textContent = state.mode === 'normal' ? 'Modo Normal' : 'Modo Hard';
+
+  const headlineEl = document.getElementById('shareHeadline');
+  headlineEl.textContent = isWin ? '🏆 Recorde quebrado' : 'Sequência encerrada';
+  headlineEl.className = 'share-headline ' + (isWin ? 'win' : 'loss');
+
+  document.getElementById('shareNumber').textContent = streak;
+  document.getElementById('shareNumberLabel').textContent = numberLabel;
+
+  const recEl = document.getElementById('shareRecordCompare');
+  if(streak > record){
+    recEl.className = 'share-record beat';
+    recEl.textContent = `+${streak - record} acima do recorde histórico`;
+  } else {
+    recEl.className = 'share-record short';
+    recEl.textContent = `faltaram ${record - streak + 1} pra igualar o recorde`;
+  }
+
+  document.getElementById('shareGames').textContent = games;
+  document.getElementById('shareRecord').textContent = record;
+
+  const oppEl = document.getElementById('shareOpponents');
+  if(history && history.length){
+    const rows = history.slice(-5).map(h => {
+      const mark = h.result === 'win' ? '✓' : (h.result === 'draw' ? '=' : '×');
+      return `${mark} ${h.era} (${h.score})`;
+    }).join('<br>');
+    oppEl.innerHTML = `<div class="opp-title">Últimos confrontos</div>${rows}`;
+  } else {
+    oppEl.innerHTML = '';
+  }
+
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('visible');
+}
+
+function saveShareImage(){
+  const btn = document.getElementById('btnSaveImage');
+  btn.disabled = true;
+  btn.textContent = 'Gerando imagem…';
+  html2canvas(document.getElementById('shareCard'), { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'sequencia-do-classico.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.disabled = false;
+    btn.textContent = '📥 Salvar imagem';
+  }).catch(()=>{
+    btn.disabled = false;
+    btn.textContent = '📥 Salvar imagem';
+    alert('Não consegui gerar a imagem agora. Tenta de novo.');
+  });
+}
+
+/* ---------------- DEV PREVIEW (prototype only) ---------------- */
+function previewEnd(isWin){
+  if(!state.team || !state.mode){
+    alert('Escolha time e modo primeiro pra testar essa tela.');
+    return;
+  }
+  const pool = POOLS[state.team];
+  const target = state.mode === 'normal' ? pool.targetWin : pool.targetUnbeaten;
+  const fakeHistory = RIVAL_SQUADS[state.team === 'gremio' ? 'inter' : 'gremio']
+    .map((s,i)=>({ era: s.era, result: i % 3 === 0 ? 'loss' : (i % 3 === 1 ? 'draw' : 'win'), score: `${1+i}-${i}` }));
+  openEndModal(isWin, {
+    streak: isWin ? target : Math.max(0, target - 3),
+    games: isWin ? target : Math.max(1, target - 2),
+    history: fakeHistory
+  });
+}
+
+/* ---------------- SCOREBOARD ---------------- */
+function updateScoreboard(){
+  if(!state.team || !state.mode) return;
+  const pool = POOLS[state.team];
+  const target = state.mode === 'normal' ? pool.targetWin : pool.targetUnbeaten;
+  const record = state.mode === 'normal' ? pool.recordWin : pool.recordUnbeaten;
+
+  document.getElementById('sbTeamLabel').textContent = pool.name;
+  document.getElementById('sbModeLabel').textContent = state.mode === 'normal' ? 'Modo Normal' : 'Modo Hard';
+  document.getElementById('sbModeLabel').className = 'sb-mode' + (state.mode==='hard' ? ' hard' : '');
+  document.getElementById('sbCount').textContent = state.streak;
+  document.getElementById('sbTarget').textContent = target;
+  document.getElementById('sbSub').innerHTML = `Recorde histórico: <b>${record}</b> · Jogo <b>${state.matchNum}</b>`;
+
+  const ticks = document.getElementById('sbTicks');
+  ticks.innerHTML = '';
+  for(let i=1;i<=target;i++){
+    const t = document.createElement('div');
+    t.className = 'tick' + (i<=state.streak ? ' filled':'') + (i===record ? ' record':'');
+    ticks.appendChild(t);
+  }
+}
+
+/* ---------------- NAV ---------------- */
+function switchScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  const sb = document.getElementById('scoreboard');
+  if(id === 'screen-setup'){
+    sb.classList.remove('visible');
+  } else {
+    sb.classList.add('visible');
+    updateScoreboard();
+  }
+}
+</script>
+</body>
+</html>

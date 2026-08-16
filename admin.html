@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Sequência do Clássico</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #f3f5f2;
+    --panel: #ffffff;
+    --panel-2: #eef1ec;
+    --line: #dde3dc;
+    --text: #1e231e;
+    --muted: #6d766c;
+    --pitch: #3f7d52;
+    --pitch-light: #e4f0e7;
+    --danger: #c14c48;
+    --danger-soft: #fbe9e8;
+    --radius: 4px;
+    --radius-sm: 3px;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0; min-height:100vh; background: var(--bg); color: var(--text);
+    font-family:'Oswald', sans-serif; padding: 28px 16px 60px;
+  }
+  .app{ max-width: 980px; margin: 0 auto; }
+  h1{ font-family:'Anton', sans-serif; font-weight:400; font-size:26px; margin:0 0 4px; }
+  .subtitle{ color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .panel{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
+  h2{ font-family:'Oswald',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:2px; color: var(--muted); font-weight:600; margin:0 0 14px; }
+
+  label{ font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--muted); display:block; margin-bottom:4px; }
+  input, select{
+    width:100%; padding: 9px 10px; border:1px solid var(--line); border-radius: var(--radius-sm);
+    font-family:'Oswald', sans-serif; font-size:14px; background: var(--panel); color: var(--text);
+  }
+  input[type=color]{ padding: 3px; height: 38px; }
+  .field{ margin-bottom: 12px; }
+  .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn{
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px;
+    padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); cursor:pointer;
+  }
+  .btn.primary{ background: var(--pitch); border-color: var(--pitch); color:#fff; }
+  .btn.danger{ background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+  .btn.small{ padding: 5px 10px; font-size: 11px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  /* config gate */
+  .config-note{ font-size:12px; color: var(--muted); line-height:1.6; margin-bottom:16px; }
+  .config-note code{ background: var(--panel-2); padding:1px 5px; border-radius:2px; }
+
+  /* layout */
+  .layout{ display:grid; grid-template-columns: 260px 1fr; gap: 16px; align-items:start; }
+  @media (max-width: 760px){ .layout{ grid-template-columns: 1fr; } }
+
+  .team-list{ display:flex; flex-direction:column; gap:8px; }
+  .team-row{
+    display:flex; align-items:center; gap:10px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm); cursor:pointer;
+    background: var(--panel);
+  }
+  .team-row.active{ border-color: var(--pitch); background: var(--pitch-light); }
+  .team-row img{ width:28px; height:30px; object-fit:contain; flex-shrink:0; }
+  .team-row .swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .team-row-name{ font-weight:600; font-size:14px; flex:1; }
+  .team-row-count{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+
+  table{ width:100%; border-collapse: collapse; font-size: 13px; }
+  th{
+    text-align:left; font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1px;
+    text-transform:uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line);
+  }
+  td{ padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td{ border-bottom:none; }
+  .pos-tag{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; padding: 2px 7px; border-radius:20px;
+    background: var(--panel-2); color: var(--muted);
+  }
+  .row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+
+  .empty{ color: var(--muted); font-size:13px; padding: 20px; text-align:center; }
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background: var(--text); color:#fff; padding: 10px 18px; border-radius: var(--radius-sm);
+    font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:50;
+  }
+  .toast.show{ opacity:1; }
+
+  .top-actions{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+  .conn-status{ font-family:'IBM Plex Mono',monospace; font-size:11px; color: var(--muted); }
+  .conn-status b{ color: var(--pitch); }
+
+  dialog{
+    border:none; border-radius: var(--radius); padding:0; max-width: 420px; width: calc(100% - 32px);
+  }
+  dialog::backdrop{ background: rgba(20,24,20,0.5); }
+  .dialog-body{ padding: 20px; }
+  .dialog-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Admin de Times</h1>
+  <p class="subtitle">Gerencia os times e jogadores usados na Sequência do Clássico.</p>
+
+  <!-- CONFIG GATE -->
+  <div class="panel" id="configPanel">
+    <h2>Conectar ao Supabase</h2>
+    <p class="config-note">Cola a URL e a <b>anon key</b> do teu projeto (Settings → API no dashboard). Fica salvo só neste navegador, em <code>localStorage</code>.</p>
+    <div class="field">
+      <label>Project URL</label>
+      <input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co">
+    </div>
+    <div class="field">
+      <label>Anon public key</label>
+      <input type="text" id="cfgKey" placeholder="eyJhbGciOi...">
+    </div>
+    <button class="btn primary" onclick="saveConfig()">Salvar e conectar</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp" style="display:none;">
+    <div class="top-actions">
+      <span class="conn-status">Conectado a <b id="connUrl"></b></span>
+      <button class="btn small" onclick="resetConfig()">Trocar projeto</button>
+    </div>
+
+    <div class="layout">
+      <div class="panel">
+        <h2>Times</h2>
+        <div class="team-list" id="teamList"></div>
+        <button class="btn primary" style="width:100%;margin-top:12px;" onclick="openTeamDialog()">+ Novo time</button>
+      </div>
+
+      <div class="panel" id="playersPanel">
+        <div class="empty">Selecione um time pra ver os jogadores.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- TEAM DIALOG -->
+<dialog id="teamDialog">
+  <div class="dialog-body">
+    <h2 id="teamDialogTitle">Novo time</h2>
+    <input type="hidden" id="teamId">
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" id="teamName" placeholder="Ex: Grêmio">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Sigla</label>
+        <input type="text" id="teamShort" placeholder="GR" maxlength="3">
+      </div>
+      <div class="field">
+        <label>Cor principal</label>
+        <input type="color" id="teamColor" value="#1e4fa0">
+      </div>
+    </div>
+    <div class="field">
+      <label>URL do escudo</label>
+      <input type="text" id="teamCrest" placeholder="https://...">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Recorde · vitórias seguidas</label>
+        <input type="number" id="teamRecordWin" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>Recorde · invencibilidade</label>
+        <input type="number" id="teamRecordUnbeaten" value="0" min="0">
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" onclick="teamDialog.close()">Cancelar</button>
+      <button class="btn danger" id="btnDeleteTeam" style="display:none;" onclick="deleteTeamConfirm()">Excluir time</button>
+      <button class="btn primary" onclick="saveTeam()">Salvar</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- PLAYER DIALOG -->
+<dialog id="playerDialog">
+  <div class="dialog-body">
+    <h2 id="playerDialogTitle">Novo jogador</h2>
+    <input type="hidden" id="playerId">
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" id="playerName" placeholder="Ex: Jardel">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Posição</label>
+        <select id="playerPos">
+          <option value="GK">Goleiro</option>
+          <option value="DF">Defensor</option>
+          <option value="MF">Meio-campo</option>
+          <option value="FW">Atacante</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nível (1–99)</label>
+        <input type="number" id="playerRating" min="1" max="99" value="70">
+      </div>
+    </div>
+    <div class="field">
+      <label>Era / referência</label>
+      <input type="text" id="playerEra" placeholder="Ex: 1995">
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" onclick="playerDialog.close()">Cancelar</button>
+      <button class="btn danger" id="btnDeletePlayer" style="display:none;" onclick="deletePlayerConfirm()">Excluir</button>
+      <button class="btn primary" onclick="savePlayer()">Salvar</button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+let supabase = null;
+let teams = [];
+let activeTeamId = null;
+let players = [];
+
+const POS_LABEL = { GK:'Goleiro', DF:'Defensor', MF:'Meio-campo', FW:'Atacante' };
+const POS_ORDER = ['GK','DF','MF','FW'];
+
+/* ---------------- CONFIG ---------------- */
+function loadConfig(){
+  const url = localStorage.getItem('sdc_supabase_url');
+  const key = localStorage.getItem('sdc_supabase_key');
+  if(url && key){
+    connect(url, key);
+  }
+}
+
+window.saveConfig = function(){
+  const url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  if(!url || !key){ showToast('Preenche URL e chave.'); return; }
+  localStorage.setItem('sdc_supabase_url', url);
+  localStorage.setItem('sdc_supabase_key', key);
+  connect(url, key);
+}
+
+window.resetConfig = function(){
+  if(!confirm('Desconectar deste projeto Supabase?')) return;
+  localStorage.removeItem('sdc_supabase_url');
+  localStorage.removeItem('sdc_supabase_key');
+  location.reload();
+}
+
+async function connect(url, key){
+  try{
+    supabase = createClient(url, key);
+    const { error } = await supabase.from('teams').select('id').limit(1);
+    if(error) throw error;
+    document.getElementById('configPanel').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('connUrl').textContent = new URL(url).host;
+    await loadTeams();
+  }catch(err){
+    alert('Não consegui conectar: ' + (err.message || err));
+  }
+}
+
+/* ---------------- TOAST ---------------- */
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------------- TEAMS ---------------- */
+async function loadTeams(){
+  const { data, error } = await supabase.from('teams').select('*').order('name');
+  if(error){ showToast('Erro ao carregar times'); return; }
+  teams = data || [];
+  renderTeamList();
+  if(activeTeamId){
+    const stillExists = teams.find(t=>t.id===activeTeamId);
+    if(stillExists){ await loadPlayers(activeTeamId); return; }
+  }
+  if(teams.length){ selectTeam(teams[0].id); }
+  else{ document.getElementById('playersPanel').innerHTML = '<div class="empty">Nenhum time cadastrado ainda.</div>'; }
+}
+
+function renderTeamList(){
+  const list = document.getElementById('teamList');
+  if(!teams.length){ list.innerHTML = '<div class="empty">Nenhum time ainda.</div>'; return; }
+  list.innerHTML = '';
+  teams.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'team-row' + (t.id === activeTeamId ? ' active' : '');
+    row.onclick = (e) => { if(!e.target.closest('.row-actions')) selectTeam(t.id); };
+    row.innerHTML = `
+      ${t.crest_url ? `<img src="${t.crest_url}" alt="">` : `<span class="swatch" style="background:${t.primary_color}"></span>`}
+      <span class="team-row-name">${t.name}</span>
+      <span class="team-row-count">${playerCountLabel(t.id)}</span>
+      <div class="row-actions"><button class="btn small" onclick="editTeam('${t.id}')">editar</button></div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function playerCountLabel(teamId){
+  if(teamId !== activeTeamId) return '';
+  return players.length + ' jog.';
+}
+
+window.selectTeam = async function(id){
+  activeTeamId = id;
+  renderTeamList();
+  await loadPlayers(id);
+}
+
+window.openTeamDialog = function(){
+  document.getElementById('teamDialogTitle').textContent = 'Novo time';
+  document.getElementById('teamId').value = '';
+  document.getElementById('teamName').value = '';
+  document.getElementById('teamShort').value = '';
+  document.getElementById('teamColor').value = '#1e4fa0';
+  document.getElementById('teamCrest').value = '';
+  document.getElementById('teamRecordWin').value = 0;
+  document.getElementById('teamRecordUnbeaten').value = 0;
+  document.getElementById('btnDeleteTeam').style.display = 'none';
+  teamDialog.showModal();
+}
+
+window.editTeam = function(id){
+  const t = teams.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('teamDialogTitle').textContent = 'Editar time';
+  document.getElementById('teamId').value = t.id;
+  document.getElementById('teamName').value = t.name;
+  document.getElementById('teamShort').value = t.short_code || '';
+  document.getElementById('teamColor').value = t.primary_color || '#1e4fa0';
+  document.getElementById('teamCrest').value = t.crest_url || '';
+  document.getElementById('teamRecordWin').value = t.record_win || 0;
+  document.getElementById('teamRecordUnbeaten').value = t.record_unbeaten || 0;
+  document.getElementById('btnDeleteTeam').style.display = 'inline-block';
+  teamDialog.showModal();
+}
+
+window.saveTeam = async function(){
+  const id = document.getElementById('teamId').value;
+  const payload = {
+    name: document.getElementById('teamName').value.trim(),
+    short_code: document.getElementById('teamShort').value.trim(),
+    primary_color: document.getElementById('teamColor').value,
+    crest_url: document.getElementById('teamCrest').value.trim(),
+    record_win: parseInt(document.getElementById('teamRecordWin').value) || 0,
+    record_unbeaten: parseInt(document.getElementById('teamRecordUnbeaten').value) || 0,
+  };
+  if(!payload.name){ showToast('Dá um nome pro time.'); return; }
+
+  let error;
+  if(id){
+    ({ error } = await supabase.from('teams').update(payload).eq('id', id));
+  } else {
+    ({ error } = await supabase.from('teams').insert(payload));
+  }
+  if(error){ showToast('Erro ao salvar time'); return; }
+  document.getElementById('teamDialog').close();
+  showToast('Time salvo!');
+  await loadTeams();
+}
+
+window.deleteTeamConfirm = async function(){
+  const id = document.getElementById('teamId').value;
+  const t = teams.find(x=>x.id===id);
+  if(!confirm(`Excluir ${t.name}? Isso apaga também todos os jogadores dele.`)) return;
+  const { error } = await supabase.from('teams').delete().eq('id', id);
+  if(error){ showToast('Erro ao excluir'); return; }
+  document.getElementById('teamDialog').close();
+  activeTeamId = null;
+  showToast('Time excluído.');
+  await loadTeams();
+}
+
+/* ---------------- PLAYERS ---------------- */
+async function loadPlayers(teamId){
+  const { data, error } = await supabase.from('players').select('*').eq('team_id', teamId).order('rating', { ascending:false });
+  if(error){ showToast('Erro ao carregar jogadores'); return; }
+  players = data || [];
+  renderTeamList();
+  renderPlayers();
+}
+
+function renderPlayers(){
+  const panel = document.getElementById('playersPanel');
+  const team = teams.find(t=>t.id===activeTeamId);
+  if(!team){ panel.innerHTML = '<div class="empty">Selecione um time.</div>'; return; }
+
+  let rows = '';
+  if(!players.length){
+    rows = `<tr><td colspan="4" class="empty">Nenhum jogador cadastrado pra ${team.name} ainda.</td></tr>`;
+  } else {
+    POS_ORDER.forEach(pos=>{
+      players.filter(p=>p.position===pos).forEach(p=>{
+        rows += `
+          <tr>
+            <td><span class="pos-tag">${POS_LABEL[pos]}</span></td>
+            <td>${p.name}</td>
+            <td>${p.era || '—'}</td>
+            <td>${p.rating}</td>
+            <td class="row-actions">
+              <button class="btn small" onclick="editPlayer('${p.id}')">editar</button>
+            </td>
+          </tr>`;
+      });
+    });
+  }
+
+  panel.innerHTML = `
+    <h2>Jogadores — ${team.name}</h2>
+    <table>
+      <thead><tr><th>Posição</th><th>Nome</th><th>Era</th><th>Nível</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <button class="btn primary" style="margin-top:14px;" onclick="openPlayerDialog()">+ Novo jogador</button>
+  `;
+}
+
+window.openPlayerDialog = function(){
+  if(!activeTeamId){ showToast('Selecione um time primeiro.'); return; }
+  document.getElementById('playerDialogTitle').textContent = 'Novo jogador';
+  document.getElementById('playerId').value = '';
+  document.getElementById('playerName').value = '';
+  document.getElementById('playerPos').value = 'GK';
+  document.getElementById('playerRating').value = 70;
+  document.getElementById('playerEra').value = '';
+  document.getElementById('btnDeletePlayer').style.display = 'none';
+  playerDialog.showModal();
+}
+
+window.editPlayer = function(id){
+  const p = players.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('playerDialogTitle').textContent = 'Editar jogador';
+  document.getElementById('playerId').value = p.id;
+  document.getElementById('playerName').value = p.name;
+  document.getElementById('playerPos').value = p.position;
+  document.getElementById('playerRating').value = p.rating;
+  document.getElementById('playerEra').value = p.era || '';
+  document.getElementById('btnDeletePlayer').style.display = 'inline-block';
+  playerDialog.showModal();
+}
+
+window.savePlayer = async function(){
+  const id = document.getElementById('playerId').value;
+  const rating = parseInt(document.getElementById('playerRating').value);
+  const payload = {
+    team_id: activeTeamId,
+    name: document.getElementById('playerName').value.trim(),
+    position: document.getElementById('playerPos').value,
+    rating: isNaN(rating) ? 70 : Math.min(99, Math.max(1, rating)),
+    era: document.getElementById('playerEra').value.trim(),
+  };
+  if(!payload.name){ showToast('Dá um nome pro jogador.'); return; }
+
+  let error;
+  if(id){
+    ({ error } = await supabase.from('players').update(payload).eq('id', id));
+  } else {
+    ({ error } = await supabase.from('players').insert(payload));
+  }
+  if(error){ showToast('Erro ao salvar jogador'); return; }
+  document.getElementById('playerDialog').close();
+  showToast('Jogador salvo!');
+  await loadPlayers(activeTeamId);
+}
+
+window.deletePlayerConfirm = async function(){
+  const id = document.getElementById('playerId').value;
+  if(!confirm('Excluir esse jogador?')) return;
+  const { error } = await supabase.from('players').delete().eq('id', id);
+  if(error){ showToast('Erro ao excluir'); return; }
+  document.getElementById('playerDialog').close();
+  showToast('Jogador excluído.');
+  await loadPlayers(activeTeamId);
+}
+
+/* ---------------- INIT ---------------- */
+window.teamDialog = document.getElementById('teamDialog');
+window.playerDialog = document.getElementById('playerDialog');
+loadConfig();
+</script>
+</body>
+</html>
